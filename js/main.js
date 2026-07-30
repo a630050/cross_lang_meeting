@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 開／關麥克風
-    micToggleBtn.addEventListener('click', () => {
+    micToggleBtn.addEventListener('click', async () => {
       if (!currentRoomId) {
         alert('請先輸入房間碼進入房間！');
         return;
@@ -429,7 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
         micToggleBtn.querySelector('.mic-text').textContent = '開啟收音';
       } else {
         const spokenLang = mySpokenLangSelect.value;
-        const success    = SpeechEngine.start(spokenLang);
+        // NOTE: start() 為 async，需 await 確保麥克風優化約束申請完成
+        const success = await SpeechEngine.start(spokenLang);
         if (success) {
           micToggleBtn.classList.add('active');
           micToggleBtn.querySelector('.mic-text').textContent = '正在收音中…（點擊停止）';
@@ -438,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
 
     // 語言切換時同步更新收音語言
     mySpokenLangSelect.addEventListener('change', () => {
