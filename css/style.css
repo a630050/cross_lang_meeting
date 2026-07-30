@@ -122,6 +122,10 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* NOTE: 限制最大高度防止控制列撐爆手機螢幕；超出時可上下捲動 */
+  max-height: 55vh;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 /* 暱稱輸入列 */
@@ -163,15 +167,18 @@ html, body {
   border: 1px solid var(--bg-card-border);
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  /* NOTE: font-size 至少 16px，防止 iOS Safari 自動觸發縮放 */
+  font-size: max(16px, 0.95rem);
   outline: none;
+  min-width: 0; /* 防止 flex 子項溢出容器 */
 }
 /* 密碼欄固定寬度，不搶走房間碼空間 */
 #room-pwd-input {
   flex: 0 0 130px;
-  font-size: 0.85rem;
+  font-size: max(16px, 0.85rem);
 }
 .room-bar input:focus { border-color: var(--accent-color); }
+
 
 
 /* 已加入房間狀態列 */
@@ -671,11 +678,11 @@ body.light-theme .lang-group select option {
   .name-bar { padding: 7px 10px; }
   .name-bar input { font-size: 0.9rem; }
 
-  /* 房間列：碼 + 密碼一排，進入按鈕縮短 */
-  .room-bar { flex-wrap: wrap; gap: 6px; }
-  #room-id-input  { flex: 1 1 auto; min-width: 90px; }
-  #room-pwd-input { flex: 0 0 110px; font-size: 0.8rem; }
-  #join-room-btn  { flex: 0 0 auto; padding: 10px 12px; font-size: 0.85rem; }
+  /* 房間列：橫向自動換行，進入按鈕強制独佔第二行（100%）保證永遠看得到 */
+  .room-bar       { flex-wrap: wrap; gap: 6px; }
+  #room-id-input  { flex: 1; min-width: 80px; }    /* 第一行：房間碼 */
+  #room-pwd-input { flex: 0 0 105px; font-size: 0.8rem; } /* 第一行：密碼（固定寬） */
+  #join-room-btn  { flex: 1 1 100%; }              /* 第二行：全寬捘9 */
 
   /* 已加入列 */
   .room-joined-bar { padding: 8px 12px; }
@@ -725,10 +732,8 @@ body.light-theme .lang-group select option {
   /* 語言選單改為垂直單欄 */
   .lang-selector-bar { grid-template-columns: 1fr; }
 
-  /* 房間列：密碼欄換行到下一行 */
-  #room-id-input  { flex: 1 1 100%; }   /* 第一行：房間碼佔滿 */
-  #room-pwd-input { flex: 1; }           /* 第二行：密碼 */
-  #join-room-btn  { flex: 0 0 auto; }   /* 第二行：進入 */
+  /* 420px 以下：密碼欄更緊湊，遠入按鈕已由上層保證全寬 */
+  #room-pwd-input { flex: 0 0 90px; font-size: 0.78rem; }
 
   /* 氣泡幾乎全寬 */
   .bubble-row { max-width: 97%; gap: 5px; }
