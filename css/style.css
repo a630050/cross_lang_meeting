@@ -643,21 +643,141 @@ body.light-theme .lang-group select option {
   color: var(--text-primary); font-size: 0.8rem;
 }
 
+/* ==========================================================================
+   RWD 響應式設計 - 手機優先調整
+   ========================================================================== */
+
+/* ── 平板 / 大手機（≤ 600px）── */
+@media (max-width: 600px) {
+  :root {
+    --subtitle-font-size: 22px;
+    --subtitle-translated-size: 18px;
+  }
+
+  .app-container {
+    max-width: 100%;
+    box-shadow: none;
+  }
+
+  /* Header 縮小 */
+  .app-header { padding: 10px 12px; }
+  .logo-title  { font-size: 0.95rem; }
+  .icon-btn    { padding: 7px 10px; font-size: 0.8rem; }
+
+  /* 控制面板縮小間距 */
+  .control-panel { padding: 10px 12px; gap: 8px; }
+
+  /* 暱稱列 */
+  .name-bar { padding: 7px 10px; }
+  .name-bar input { font-size: 0.9rem; }
+
+  /* 房間列：碼 + 密碼一排，進入按鈕縮短 */
+  .room-bar { flex-wrap: wrap; gap: 6px; }
+  #room-id-input  { flex: 1 1 auto; min-width: 90px; }
+  #room-pwd-input { flex: 0 0 110px; font-size: 0.8rem; }
+  #join-room-btn  { flex: 0 0 auto; padding: 10px 12px; font-size: 0.85rem; }
+
+  /* 已加入列 */
+  .room-joined-bar { padding: 8px 12px; }
+  .room-joined-info { font-size: 0.82rem; }
+  .leave-btn { padding: 6px 10px; font-size: 0.8rem; }
+
+  /* 語言選單：兩欄縮小 */
+  .lang-selector-bar { gap: 6px; }
+  .lang-group label  { font-size: 0.7rem; }
+  .lang-group select { padding: 7px 8px; font-size: 0.8rem; }
+
+  /* 氣泡：幾乎全寬 */
+  .bubble-row     { max-width: 94%; }
+  .bubble-content { min-width: 0; }
+
+  /* 頭像縮小 */
+  .avatar-circle { width: 34px; height: 34px; font-size: 0.85rem; }
+  .avatar-label  { font-size: 0.55rem; max-width: 38px; }
+  .bubble-row    { gap: 7px; }
+
+  /* 氣泡尖角方向維持，僅縮小 padding */
+  .subtitle-card { padding: 10px 12px; border-radius: 14px; }
+
+  /* 底部控制列 */
+  .app-footer     { padding: 10px 12px; }
+  .footer-controls { gap: 8px; }
+  .mic-btn        { padding: 13px 10px; font-size: 0.95rem; }
+  .tool-btn       { padding: 10px 10px; font-size: 0.8rem; }
+  .font-controls  { gap: 4px; }
+
+  /* 浮動置底按鈕 */
+  .scroll-bottom-btn { bottom: 72px; right: 12px; padding: 8px 14px; font-size: 0.85rem; }
+
+  /* 中間字幕區 */
+  .subtitle-container { padding: 12px; gap: 10px; }
+  .subtitles-list     { gap: 12px; }
+  .interim-card       { font-size: var(--subtitle-font-size); padding: 8px 12px; }
+}
+
+/* ── 小手機（≤ 420px）── */
+@media (max-width: 420px) {
+  :root {
+    --subtitle-font-size: 20px;
+    --subtitle-translated-size: 16px;
+  }
+
+  /* 語言選單改為垂直單欄 */
+  .lang-selector-bar { grid-template-columns: 1fr; }
+
+  /* 房間列：密碼欄換行到下一行 */
+  #room-id-input  { flex: 1 1 100%; }   /* 第一行：房間碼佔滿 */
+  #room-pwd-input { flex: 1; }           /* 第二行：密碼 */
+  #join-room-btn  { flex: 0 0 auto; }   /* 第二行：進入 */
+
+  /* 氣泡幾乎全寬 */
+  .bubble-row { max-width: 97%; gap: 5px; }
+
+  /* 頭像再縮小 */
+  .avatar-circle { width: 30px; height: 30px; font-size: 0.75rem; }
+  .avatar-label  { font-size: 0.5rem; max-width: 32px; }
+
+  /* Header 行動版簡化 */
+  .logo-title { font-size: 0.88rem; }
+  .icon-btn   { padding: 6px 8px; font-size: 0.75rem; }
+
+  /* 底部按鈕觸控最小高度 44px */
+  .mic-btn  { min-height: 48px; }
+  .tool-btn { min-height: 44px; }
+}
+
+/* ── 超小手機（≤ 360px，例：舊款 Android）── */
+@media (max-width: 360px) {
+  :root {
+    --subtitle-font-size: 18px;
+    --subtitle-translated-size: 14px;
+  }
+
+  .control-panel { padding: 8px 10px; gap: 6px; }
+
+  /* 已加入列：名稱縮短，按鈕只留圖示 */
+  .room-joined-info { font-size: 0.75rem; }
+  .leave-btn { padding: 5px 8px; font-size: 0.75rem; }
+
+  /* 頭像隱藏名稱標籤，節省空間 */
+  .avatar-label { display: none; }
+  .bubble-row   { gap: 4px; }
+}
+
+/* ── 安全區域支援（iPhone 瀏海 / 底部 Home Bar）── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .app-footer {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
 @keyframes bubbleIn {
   from { opacity: 0; transform: scale(0.85) translateY(12px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.02); }
   100% { transform: scale(1); }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --subtitle-font-size: 24px;
-    --subtitle-translated-size: 20px;
-  }
-  .lang-selector-bar { grid-template-columns: 1fr; }
 }
