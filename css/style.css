@@ -465,13 +465,74 @@ body.light-theme .lang-bar select option {
   background: rgba(59, 130, 246, 0.1);
 }
 
-/* 對方氣泡：翻譯小標籤 */
+/* 對方氣泡：翻譯小標籤（保留樣式供未來使用）*/
 .translate-label {
   font-size: 0.68rem;
   color: var(--text-secondary);
   padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.7;
+}
+
+/* ══ 左滑刪除 / 右鍵刪除（僅自己的氣泡）══ */
+
+/* wrapper：裁切刪除紅框 + 允許卡片滑出 */
+.card-swipe-wrapper {
+  position: relative;
+  overflow: hidden;
+  /* NOTE: border-radius 要同時匹配 self-card 的尖角設計
+     18px 一般角，右下角 4px = 氣泡尖角 */
+  border-radius: 18px 18px 4px 18px;
+  /* 讓氣泡卡片的 will-change 提示 GPU */
+}
+
+.card-swipe-wrapper .subtitle-card.self-card {
+  /* NOTE: 覆蓋原本的 border-radius，由外層 wrapper 控制 */
+  border-radius: 0;
+  will-change: transform;
+  /* 移除原本的 box-shadow（wrapper overflow:hidden 會裁切它）*/
+  box-shadow: none;
+  position: relative;
+  z-index: 2;
+}
+
+/* 隱藏在右側的刪除紅框，左滑後顯示 */
+.swipe-delete-reveal {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 68px;
+  background: linear-gradient(160deg, #EF4444, #B91C1C);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  z-index: 1;
+  cursor: pointer;
+  user-select: none;
+  /* NOTE: 觸控區域要夠大，Apple HIG 建議 ≥ 44px */
+}
+.swipe-delete-reveal:active {
+  background: linear-gradient(160deg, #DC2626, #991B1B);
+}
+.del-icon  { font-size: 1.3rem; line-height: 1; }
+.del-label { font-size: 0.65rem; font-weight: 700; color: white; letter-spacing: 0.03em; }
+
+/* 電腦端：hover 提示右鍵可刪 */
+@media (hover: hover) {
+  .self-card:hover::after {
+    content: '右鍵刪除';
+    position: absolute;
+    bottom: -22px;
+    right: 0;
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    pointer-events: none;
+    white-space: nowrap;
+  }
 }
 
 

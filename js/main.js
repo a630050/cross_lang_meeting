@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let shouldAutoScroll     = true;
   let isProgrammaticScroll = false;
   let currentFontSize      = 26;
+  // NOTE: 追蹤目前已展開刪除按鈕的氣泡列，確保同時只有一個展開
+  let activeRevealedRow    = null;
 
   // ── 初始化：自動彈出設定 Modal ───────────────────────────
   settingsModal.style.display = 'flex';
@@ -250,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isSelf) {
       const editBadge = document.createElement('span');
       editBadge.className   = 'edit-hint-badge';
-      editBadge.textContent = '✒ 可修改';
+      editBadge.textContent = '✒ 可改 ← 左滑刪';
       metaEl.appendChild(editBadge);
     }
 
@@ -266,15 +268,144 @@ document.addEventListener('DOMContentLoaded', () => {
     // NOTE: 對方氣泡不顯示「已翻譯」標籤，節省空間
 
     contentCol.appendChild(metaEl);
-    contentCol.appendChild(card);
+
+    if (isSelf) {
+      // 自己的氣泡：包在可左滑刪除的 wrapper 裡
+      const swipeWrapper = document.createElement('div');
+      swipeWrapper.className = 'card-swipe-wrapper';
+
+      const deleteReveal = document.createElement('div');
+      deleteReveal.className = 'swipe-delete-reveal';
+      deleteReveal.innerHTML = '<span class="del-icon">🗑️</span><span class="del-label">刪除</span>';
+
+      swipeWrapper.appendChild(card);
+      swipeWrapper.appendChild(deleteReveal);
+      contentCol.appendChild(swipeWrapper);
+
+      setupBubbleEdit(mainText, { spokenLang });
+      setupSwipeDelete(swipeWrapper, card, bubbleRow);
+    } else {
+      contentCol.appendChild(card);
+    }
 
     bubbleRow.appendChild(avatarCol);
     bubbleRow.appendChild(contentCol);
 
-    if (isSelf) setupBubbleEdit(mainText, { spokenLang });
-
     return bubbleRow;
   }
+
+  // ── 左滑 / 右鍵刪除 ──────────────────────────────────────
+
+  /** 收合指定列的刪除按鈕 */
+  function collapseReveal(row) {
+    const c = row && row.querySelector('.subtitle-card');
+    if (c) {
+      c.style.transition = 'transform 0.25s ease';
+      c.style.transform  = 'translateX(0)';
+    }
+    if (activeRevealedRow === row) activeRevealedRow = null;
+  }
+
+  /** 以動畫移除氣泡列 */
+  function removeBubble(row) {
+    const h = row.offsetHeight;
+    row.style.overflow     = 'hidden';
+    row.style.maxHeight    = h + 'px';
+    row.style.transition   = 'opacity 0.2s ease, max-height 0.3s ease, margin-bottom 0.3s ease';
+    requestAnimationFrame(() => {
+      row.style.opacity      = '0';
+      row.style.maxHeight    = '0';
+      row.style.marginBottom = '0';
+    });
+    setTimeout(() => row.remove(), 340);
+  }
+
+  /**
+   * 為自己的氣泡 wrapper 設置左滑刪除 + 右鍵刪除
+   * @param {HTMLElement} swipeWrapper - .card-swipe-wrapper
+   * @param {HTMLElement} card         - .subtitle-card.self-card
+   * @param {HTMLElement} bubbleRow    - .bubble-row.self-row
+   */
+  function setupSwipeDelete(swipeWrapper, card, bubbleRow) {
+    const REVEAL_W  = 68; // px - 刪除按鈕寬度
+    const THRESHOLD = 52; // px - 觸發展開的滑動距離
+    let startX   = 0;
+    let startY   = 0;
+    let curDX    = 0;
+    let moving   = false;
+    let revealed = false;
+
+    const deleteBtn = swipeWrapper.querySelector('.swipe-delete-reveal');
+
+    const snapReveal = () => {
+      card.style.transition = 'transform 0.25s ease';
+      card.style.transform  = `translateX(-${REVEAL_W}px)`;
+      revealed = true;
+      // 收合其他已展開的氣泡
+      if (activeRevealedRow && activeRevealedRow !== bubbleRow) collapseReveal(activeRevealedRow);
+      activeRevealedRow = bubbleRow;
+    };
+
+    const snapBack = () => {
+      card.style.transition = 'transform 0.25s ease';
+      card.style.transform  = 'translateX(0)';
+      revealed = false;
+      if (activeRevealedRow === bubbleRow) activeRevealedRow = null;
+    };
+
+    // ── 觸控滑動（行動裝置）──
+    swipeWrapper.addEventListener('touchstart', (e) => {
+      startX  = e.touches[0].clientX;
+      startY  = e.touches[0].clientY;
+      curDX   = 0;
+      moving  = false;
+      if (!revealed) card.style.transition = 'none';
+    }, { passive: true });
+
+    swipeWrapper.addEventListener('touchmove', (e) => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      // 若主要方向是垂直，忽略（讓頁面正常捲動）
+      if (!moving && Math.abs(dy) > Math.abs(dx) + 8) return;
+      moving = true;
+      curDX  = dx;
+      const base    = revealed ? -REVEAL_W : 0;
+      const clamped = Math.max(-REVEAL_W * 1.25, Math.min(0, base + dx));
+      card.style.transform = `translateX(${clamped}px)`;
+    }, { passive: true });
+
+    swipeWrapper.addEventListener('touchend', () => {
+      if (!moving) return;
+      const base = revealed ? -REVEAL_W : 0;
+      if (base + curDX < -THRESHOLD) snapReveal();
+      else snapBack();
+    });
+
+    // ── 點擊刪除按鈕 ──
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('確定刪除此條字幕？')) {
+        removeBubble(bubbleRow);
+        activeRevealedRow = null;
+      } else {
+        snapBack();
+      }
+    });
+
+    // ── 右鍵點擊（桌面）──
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (confirm('確定刪除此條字幕？')) removeBubble(bubbleRow);
+    });
+  }
+
+  // 觸控 / 點擊氣泡外側 → 收合刪除按鈕
+  document.addEventListener('touchstart', (e) => {
+    if (activeRevealedRow && !activeRevealedRow.contains(e.target)) collapseReveal(activeRevealedRow);
+  }, { passive: true });
+  document.addEventListener('mousedown', (e) => {
+    if (activeRevealedRow && !activeRevealedRow.contains(e.target)) collapseReveal(activeRevealedRow);
+  });
 
   function setupBubbleEdit(mainTextEl, { spokenLang }) {
     mainTextEl.addEventListener('click', () => {
