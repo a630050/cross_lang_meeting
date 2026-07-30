@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentRoomId        = '';
   let shouldAutoScroll     = true;
   let isProgrammaticScroll = false;
-  let currentFontSize      = 24;
+  let currentFontSize      = 20;
   let connectedPeers       = 0;
   // NOTE: 追蹤目前已展開刪除按鈕的氣泡列，確保同時只有一個
   let activeRevealedRow    = null;

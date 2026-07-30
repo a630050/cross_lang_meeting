@@ -15,9 +15,9 @@
   --success-color: #10B981;
   --warning-color: #F59E0B;
   --danger-color: #EF4444;
-  --subtitle-font-size: 24px;
+  --subtitle-font-size: 20px;
   --subtitle-line-height: 1.4;
-  --subtitle-translated-size: 24px;
+  --subtitle-translated-size: 20px;
 }
 
 body.light-theme {
