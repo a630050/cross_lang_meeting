@@ -15,7 +15,7 @@
   --success-color: #10B981;
   --warning-color: #F59E0B;
   --danger-color: #EF4444;
-  --subtitle-font-size: 28px;
+  --subtitle-font-size: 24px;
   --subtitle-line-height: 1.4;
   --subtitle-translated-size: 24px;
 }
@@ -97,6 +97,12 @@ html, body {
 .status-dot.connected { background-color: var(--success-color); box-shadow: 0 0 8px var(--success-color); }
 .status-dot.connecting { background-color: var(--warning-color); animation: pulse 1s infinite; }
 
+.connected-count {
+  font-size: 0.7rem;
+  color: var(--success-color);
+  margin-left: 8px;
+  font-weight: 600;
+}
 .header-actions {
   display: flex;
   gap: 8px;
@@ -862,6 +868,18 @@ body.light-theme .settings-field select option {
   color: #34D399;
   font-size: 1rem;
   letter-spacing: 0.05em;
+}
+
+/* 設定頁底部刪除提示 */
+.settings-delete-hint {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--danger-color);
+  margin-top: 14px;
+  padding: 8px;
+  border-top: 1px solid var(--bg-card-border);
+  opacity: 0.85;
+  user-select: none;
 }
 
 /* 開始使用按鈕（進入後顯示）*/

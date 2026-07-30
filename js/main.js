@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const statusDot              = document.querySelector('.status-dot');
   const statusText             = document.getElementById('status-text');
+  const connectedCountEl       = document.getElementById('connected-count');
   const subtitleContainer      = document.getElementById('subtitle-container');
   const subtitlesList          = document.getElementById('subtitles-list');
   const welcomeCard            = document.getElementById('welcome-card');
@@ -69,20 +70,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearSubtitlesBtn      = document.getElementById('clear-subtitles-btn');
   const scrollBottomBtn        = document.getElementById('scroll-bottom-btn');
   const themeToggleBtn         = document.getElementById('theme-toggle-btn');
+  const deleteHintArea         = document.getElementById('delete-hint-area');
 
   // ── 狀態 ─────────────────────────────────────────────────
   let currentRoomId        = '';
   let shouldAutoScroll     = true;
   let isProgrammaticScroll = false;
-  let currentFontSize      = 26;
+  let currentFontSize      = 24;
+  let connectedPeers       = 0;
   // NOTE: 追蹤目前已展開刪除按鈕的氣泡列，確保同時只有一個
   let activeRevealedRow    = null;
 
+  // ── localStorage key ──────────────────────────────────────
+  const LS_PREFIX = 'crosslang_';
+
   // ── 初始化 ───────────────────────────────────────────────
+  loadSettings();
   settingsModal.style.display = 'flex';
   initFromUrlParams();
   setupSpeechEngineCallbacks();
   setupEventListeners();
+  applyFontSize();
 
   function initFromUrlParams() {
     const params = new URLSearchParams(window.location.search);
@@ -93,6 +101,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── 工具函式 ─────────────────────────────────────────────
   function getMyName() { return (nicknameInput.value || '').trim() || '我'; }
   function getMyLang() { return myLangSelect.value; }
+
+  function loadSettings() {
+    const saved = localStorage.getItem(LS_PREFIX + 'settings');
+    if (!saved) return;
+    try {
+      const s = JSON.parse(saved);
+      if (s.nickname) nicknameInput.value = s.nickname;
+      if (s.lang)     myLangSelect.value   = s.lang;
+      if (s.fontSize) currentFontSize      = s.fontSize;
+      if (s.theme === 'light') {
+        document.body.classList.add('light-theme');
+        if (themeToggleBtn) themeToggleBtn.textContent = '☀️';
+      }
+    } catch (e) { /* ignore corrupt data */ }
+  }
+
+  function saveSettings() {
+    try {
+      localStorage.setItem(LS_PREFIX + 'settings', JSON.stringify({
+        nickname: nicknameInput.value,
+        lang:     myLangSelect.value,
+        fontSize: currentFontSize,
+        theme:    document.body.classList.contains('light-theme') ? 'light' : 'dark'
+      }));
+    } catch (e) { /* storage full or disabled */ }
+  }
+
+  function applyFontSize() {
+    document.documentElement.style.setProperty('--subtitle-font-size', `${currentFontSize}px`);
+  }
 
   // ── 設定 Modal ───────────────────────────────────────────
   function openSettingsModal()  { settingsModal.style.display = 'flex'; }
@@ -128,6 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
     closeSettingsModalBtn.style.display  = 'inline-block';
     startUsingBtn.style.display          = 'block';
     shareRoomBtn.style.display           = 'inline-flex';
+    if (deleteHintArea) deleteHintArea.style.display = 'block';
+    saveSettings();
   }
 
   function switchToSetupUI() {
@@ -145,12 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
     enableInputs();
     switchToJoinedUI(currentRoomId, !!password);
     P2PManager.joinRoom(currentRoomId, password, handleP2PStatus, handleP2PData);
+    P2PManager.setPeersChangeCallback(handlePeersChange);
   }
 
   function leaveRoom() {
     disableInputs();
     P2PManager.leaveRoom();
     currentRoomId = '';
+    connectedPeers = 0;
+    if (deleteHintArea) deleteHintArea.style.display = 'none';
+    updateConnectedCount();
     switchToSetupUI();
     openSettingsModal();
   }
@@ -166,12 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (status === 'connected' && message.includes('成功連線')) {
       showSystemNotice('✅ 已與對方建立連線！');
-      // 延遲廣播，確保資料通道已穩定
       setTimeout(() => {
         P2PManager.broadcast({ type: 'join', sender: getMyName(), timestamp: Date.now() });
       }, 300);
     }
+    if (status === 'disconnected') {
+      connectedPeers = 0;
+      updateConnectedCount();
+    }
   }
+
 
   /**
    * 收到對方資料
@@ -205,6 +253,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const textEl = bubbleEl.querySelector('.bubble-main-text');
     if (textEl) textEl.textContent = translated || data.text;
     checkAndAutoScroll();
+  }
+
+  /** P2P 連線人數變更回呼 */
+  function handlePeersChange(count, event) {
+    connectedPeers = count;
+    updateConnectedCount();
+    if (event === 'leave') {
+      showSystemNotice('👋 一位成員離開了房間');
+    }
+  }
+
+  function updateConnectedCount() {
+    if (!connectedCountEl) return;
+    if (connectedPeers === 0) {
+      connectedCountEl.style.display = 'none';
+    } else {
+      connectedCountEl.style.display = 'inline';
+      connectedCountEl.textContent = `${connectedPeers} 人已連線`;
+    }
   }
 
   // ── Speech Engine 回呼 ───────────────────────────────────
@@ -299,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const hint       = document.createElement('span');
       hint.className   = 'edit-hint-badge';
       // NOTE: 區分來源：文字輸入 vs 語音辨識，+ 提醒左滑刪除
-      hint.textContent = (isTyped ? '⌨️' : '🎤') + ' 左滑刪';
+      hint.textContent = isTyped ? '⌨️' : '🎤';
       metaEl.appendChild(hint);
     }
 
@@ -491,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     joinRoomBtn.addEventListener('click', () => joinRoom(roomIdInput.value));
     roomIdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(roomIdInput.value); });
     leaveRoomBtn.addEventListener('click', () => { if (confirm('確定離開目前房間？')) leaveRoom(); });
+    nicknameInput.addEventListener('change', saveSettings);
 
     // 麥克風 FAB（點擊切換持續收音）
     micFab.addEventListener('click', async () => {
@@ -513,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 語言切換（可在對話中途更改）
     myLangSelect.addEventListener('change', () => {
       if (SpeechEngine.isListening()) SpeechEngine.setLanguage(getMyLang());
+      saveSettings();
     });
 
     // 文字輸入 textarea：自動展高
@@ -539,11 +608,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 字號調整
     fontIncBtn.addEventListener('click', () => {
       currentFontSize = Math.min(48, currentFontSize + 2);
-      document.documentElement.style.setProperty('--subtitle-font-size', `${currentFontSize}px`);
+      applyFontSize();
+      saveSettings();
     });
     fontDecBtn.addEventListener('click', () => {
       currentFontSize = Math.max(14, currentFontSize - 2);
-      document.documentElement.style.setProperty('--subtitle-font-size', `${currentFontSize}px`);
+      applyFontSize();
+      saveSettings();
     });
 
     // 清空字幕
@@ -558,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggleBtn.addEventListener('click', () => {
       document.body.classList.toggle('light-theme');
       themeToggleBtn.textContent = document.body.classList.contains('light-theme') ? '☀️' : '🌙';
+      saveSettings();
     });
 
     // 分享 Modal

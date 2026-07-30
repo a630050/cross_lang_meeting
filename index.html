@@ -21,6 +21,7 @@
         <div class="connection-status" id="connection-status">
           <span class="status-dot disconnected"></span>
           <span class="status-text" id="status-text">未加入房間</span>
+          <span class="connected-count" id="connected-count" style="display:none"></span>
         </div>
       </div>
       <div class="header-actions">
@@ -127,6 +128,11 @@
       <button id="start-using-btn" class="primary-btn full-width-btn" style="display:none">
         ✅ 開始使用
       </button>
+
+      <!-- 刪除方式提醒（加入後才顯示）-->
+      <div id="delete-hint-area" class="settings-delete-hint" style="display:none">
+        💡 自己的氣泡可左滑或右鍵刪除
+      </div>
     </div>
   </div>
 

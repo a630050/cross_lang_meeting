@@ -21,37 +21,51 @@ const SpeechEngine = (function() {
   }
 
   /**
-   * 預先以最佳音訊約束申請麥克風權限
-   * 讓系統層級的 AGC（自動增益）、降噪、迴音消除在 Web Speech API 啟動前就生效
+   * 兩段式約束策略：
+   *   第 1 段 → exact（強制要求 AGC/EC/NS，手機必須啟用否則報錯）
+   *   第 2 段 → ideal（失敗時降級，瀏覽器「盡量做」但不強迫）
+   *   都失敗 → 放棄，Web Speech API 用自己的預設值
    * @returns {Promise<boolean>} 是否成功取得麥克風
    */
   async function primeAudioContext() {
-    if (micStream) return true; // 已申請過，直接重用
+    if (micStream) return true;
 
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          // --- 系統層級音訊優化（向 OS/驅動層請求）---
-          echoCancellation:  { ideal: true },  // 迴音消除
-          noiseSuppression:  { ideal: true },  // 背景降噪
-          autoGainControl:   { ideal: true },  // 自動增益控制（音壓自動提升）
+    const baseConstraints = {
+      sampleRate:   { ideal: 48000 },
+      sampleSize:   { ideal: 16 },
+      channelCount: { ideal: 1 },
+      latency:      { ideal: 0.01 }
+    };
 
-          // --- 採樣品質 ---
-          sampleRate:        { ideal: 48000 }, // 高採樣率，語音辨識效果更佳
-          sampleSize:        { ideal: 16 },    // 16-bit 精度
-          channelCount:      { ideal: 1 },     // 單聲道（降低雜訊，提升辨識率）
+    const exactAudio = {
+      ...baseConstraints,
+      echoCancellation: { exact: true },
+      noiseSuppression: { exact: true },
+      autoGainControl:  { exact: true }
+    };
 
-          // --- 進階延遲控制 ---
-          latency:           { ideal: 0.01 }   // 低延遲模式
-        }
-      });
-      console.log('[SpeechEngine] 麥克風初始化成功，音訊優化約束已套用');
-      return true;
-    } catch (err) {
-      console.warn('[SpeechEngine] 無法套用進階音訊約束，回退至預設麥克風:', err.name);
-      // HACK: 權限被拒或不支援時，仍允許繼續（Web Speech API 會自行請求）
-      return false;
+    const idealAudio = {
+      ...baseConstraints,
+      echoCancellation: { ideal: true },
+      noiseSuppression: { ideal: true },
+      autoGainControl:  { ideal: true }
+    };
+
+    for (const [label, constraints] of [
+      ['[SpeechEngine] exact 約束', exactAudio],
+      ['[SpeechEngine] ideal 約束', idealAudio]
+    ]) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+        console.log(label, '→ 麥克風取得成功');
+        return true;
+      } catch (err) {
+        console.warn(label, '→ 失敗:', err.name);
+      }
     }
+
+    console.warn('[SpeechEngine] 所有約束皆失敗，繼續不帶優化');
+    return false;
   }
 
   /**

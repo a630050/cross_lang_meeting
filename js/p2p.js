@@ -13,8 +13,9 @@ const P2PManager = (function () {
   let roomId      = null;
   let effectiveKey = null;
 
-  let onDataCallback   = null;
-  let onStatusCallback = null;
+  let onDataCallback      = null;
+  let onStatusCallback    = null;
+  let onPeersChangeCallback = null;
 
   // ── 工具函式 ──────────────────────────────────────────────
 
@@ -146,6 +147,7 @@ const P2PManager = (function () {
       console.log('[P2P] ✅ 資料通道建立成功:', conn.peer);
       connections[conn.peer] = conn;
       if (onStatusCallback) onStatusCallback('connected', '✅ 已與對方成功連線！');
+      if (onPeersChangeCallback) onPeersChangeCallback(Object.keys(connections).length, 'join');
     };
 
     if (conn.open) {
@@ -163,6 +165,7 @@ const P2PManager = (function () {
     conn.on('close', () => {
       console.log('[P2P] 通道關閉:', conn.peer);
       delete connections[conn.peer];
+      if (onPeersChangeCallback) onPeersChangeCallback(Object.keys(connections).length, 'leave');
       if (Object.keys(connections).length === 0) {
         if (onStatusCallback) onStatusCallback('connected', `已加入房間 [${roomId}]，等待對方連線...`);
       }
@@ -228,6 +231,7 @@ const P2PManager = (function () {
     leaveRoom,
     broadcast,
     connectToPeer,
+    setPeersChangeCallback: (cb) => { onPeersChangeCallback = cb; },
     getMyPeerId:       () => myPeerId,
     getRoomId:         () => roomId,
     getConnectedCount: () => Object.keys(connections).length
