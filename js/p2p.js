@@ -1,126 +1,181 @@
 /**
- * PeerJS P2P 房间信令与数据通道通信模块 (0 后端依赖)
+ * PeerJS P2P 房間信令與資料通道通信模組（零後端依賴）
+ *
+ * 對等發現策略：錨定節點（Anchor）模式
+ * - 第一個加入者嘗試佔用固定錨定 ID（roomKey-0）
+ * - 後續加入者連線至錨定節點，並監聽 incoming 連線
+ * - 密碼雜湊後混入 effectiveKey，不同密碼完全隔離
  */
-const P2PManager = (function() {
-  let peer = null;
-  let connections = {}; // connected peer DataChannels
-  let myPeerId = null;
-  let roomId = null;
-  
-  let onDataCallback = null;
+const P2PManager = (function () {
+  let peer        = null;
+  let connections = {};
+  let myPeerId    = null;
+  let roomId      = null;
+  let effectiveKey = null;
+
+  let onDataCallback   = null;
   let onStatusCallback = null;
 
+  // ── 工具函式 ──────────────────────────────────────────────
+
   /**
-   * 简单的字符串哈希函数
+   * 簡易非密碼學雜湊（djb2 變形）
+   * NOTE: 目的是隱藏密碼明文，非加密安全
    */
   function simpleHash(str) {
-    let hash = 0;
+    let h = 5381;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
+      h = Math.imul(h, 33) ^ str.charCodeAt(i);
     }
-    return Math.abs(hash).toString(36);
+    return (h >>> 0).toString(36).padStart(6, '0').slice(-6);
+  }
+
+  // ── 進入房間主流程 ────────────────────────────────────────
+
+  /**
+   * 初始化 P2P 實例並加入房間
+   * @param {string} roomCode  4~12 位房間碼
+   * @param {string} password  房間密碼（空字串表示無密碼）
+   * @param {Function} onStatus
+   * @param {Function} onData
+   */
+  function joinRoom(roomCode, password, onStatus, onData) {
+    roomId           = roomCode.trim().toLowerCase();
+    onStatusCallback = onStatus;
+    onDataCallback   = onData;
+
+    const pwdSuffix = password ? `-${simpleHash(password.trim())}` : '';
+    effectiveKey    = `${roomId}${pwdSuffix}`;
+
+    // 銷毀舊連線
+    if (peer) {
+      try { peer.destroy(); } catch (e) {}
+      peer = null;
+      connections = {};
+    }
+
+    if (onStatusCallback) onStatusCallback('connecting', '正在連線 P2P 網路...');
+    tryAsAnchor();
   }
 
   /**
-   * 初始化 P2P 实例并建立/加入房间
-   * @param {string} roomCode 4~12 位房间号 (如 '8888')
-   * @param {string} password 房间密码（空白则表示无密码）
+   * 嘗試成為錨定節點（房間內第一人）
+   * 錨定 ID 格式：cross-sub-{effectiveKey}-0
+   * NOTE: PeerJS 若回傳 unavailable-id 錯誤，表示錨定已被佔用，
+   *       此時切換為客戶端模式主動連線至錨定節點
    */
-  function joinRoom(roomCode, password, onStatus, onData) {
-    roomId = roomCode.trim().toLowerCase();
-    onStatusCallback = onStatus;
-    onDataCallback = onData;
+  function tryAsAnchor() {
+    const anchorId = `cross-sub-${effectiveKey}-0`;
+    myPeerId = anchorId;
 
-    // NOTE: 密码杂凑后混入 Peer ID 前缀，不同密码的人对方找不到对方
-    const pwdSuffix  = password ? `-${simpleHash(password.trim())}` : '';
-    const effectiveKey = `${roomId}${pwdSuffix}`;
-
-    // 为该设备随机生成唯一的 Peer ID 标识
-    myPeerId = `cross-sub-${effectiveKey}-${Math.random().toString(36).substring(2, 8)}`;
-
-    if (peer) {
-      try { peer.destroy(); } catch(e) {}
-    }
-
-    if (onStatusCallback) onStatusCallback('connecting', '正在连接 P2P 网络...');
-
-    // 连接 PeerJS 公开信令云 (免费 0 成本)
-    peer = new Peer(myPeerId, {
-      debug: 1
-    });
+    peer = new Peer(anchorId, { debug: 0 });
 
     peer.on('open', (id) => {
-      console.log('[P2P] 成功注册我的 Peer ID:', id);
-      if (onStatusCallback) onStatusCallback('connected', `已加入房间 [${roomId}]`);
-
-      // 广播扫描与连接同一房间的其他 Peer
-      connectToRoomPeers();
+      console.log('[P2P] 成為錨定節點:', id);
+      if (onStatusCallback) onStatusCallback('connected', `已加入房間 [${roomId}]，等待對方連線...`);
     });
 
-    // 监听 incoming P2P 连接
+    peer.on('error', (err) => {
+      if (err.type === 'unavailable-id') {
+        // 錨定 ID 已被佔用 → 切換為客戶端模式
+        console.log('[P2P] 錨定節點已存在，以客戶端身份加入');
+        joinAsClient(anchorId);
+      } else {
+        console.warn('[P2P] 連線錯誤:', err.type, err);
+        if (onStatusCallback) onStatusCallback('disconnected', `連線提示：${err.type}`);
+      }
+    });
+
+    // 監聽對方主動連入
+    peer.on('connection', (conn) => {
+      setupConnection(conn);
+    });
+
+    peer.on('disconnected', () => {
+      console.log('[P2P] 與信令伺服器斷線，嘗試重連...');
+      try { peer.reconnect(); } catch (e) {}
+    });
+  }
+
+  /**
+   * 以隨機 ID 加入，並主動連線至錨定節點
+   * @param {string} anchorId - 錨定節點的 Peer ID
+   */
+  function joinAsClient(anchorId) {
+    if (peer) {
+      try { peer.destroy(); } catch (e) {}
+    }
+
+    const clientId = `cross-sub-${effectiveKey}-${Math.random().toString(36).substring(2, 8)}`;
+    myPeerId = clientId;
+
+    peer = new Peer(clientId, { debug: 0 });
+
+    peer.on('open', (id) => {
+      console.log('[P2P] 以客戶端身份加入:', id);
+      if (onStatusCallback) onStatusCallback('connecting', '正在與對方建立點對點連線...');
+
+      // 主動連線至錨定節點
+      const conn = peer.connect(anchorId, { reliable: true });
+      setupConnection(conn);
+    });
+
+    // NOTE: 同一房間可能有多人，也監聽 incoming 連線
     peer.on('connection', (conn) => {
       setupConnection(conn);
     });
 
     peer.on('error', (err) => {
-      console.warn('[P2P] Peer 发生异常:', err);
-      if (onStatusCallback) onStatusCallback('disconnected', `网络连接提示: ${err.type || err}`);
+      console.warn('[P2P] 客戶端連線錯誤:', err.type);
+      if (onStatusCallback) onStatusCallback('disconnected', `連線失敗：${err.type}`);
     });
 
     peer.on('disconnected', () => {
-      console.log('[P2P] 断开信令服务器，尝试自动重连...');
-      try { peer.reconnect(); } catch(e) {}
+      try { peer.reconnect(); } catch (e) {}
     });
   }
 
+  // ── 連線事件處理 ──────────────────────────────────────────
+
   function setupConnection(conn) {
     conn.on('open', () => {
-      console.log('[P2P] P2P 通道建立成功:', conn.peer);
+      console.log('[P2P] 資料通道建立成功:', conn.peer);
       connections[conn.peer] = conn;
-      if (onStatusCallback) onStatusCallback('connected', `已与对方连线成功！`);
+      if (onStatusCallback) onStatusCallback('connected', '✅ 已與對方成功連線！');
     });
 
     conn.on('data', (data) => {
-      console.log('[P2P] 收到来自对方的数据:', data);
+      console.log('[P2P] 收到資料:', data);
       if (onDataCallback) onDataCallback(data);
     });
 
     conn.on('close', () => {
-      console.log('[P2P] 通道已关闭:', conn.peer);
+      console.log('[P2P] 通道關閉:', conn.peer);
       delete connections[conn.peer];
       if (Object.keys(connections).length === 0) {
-        if (onStatusCallback) onStatusCallback('connected', `对方已离开房间`);
+        if (onStatusCallback) onStatusCallback('connected', `已加入房間 [${roomId}]，等待對方連線...`);
       }
     });
 
     conn.on('error', (err) => {
-      console.warn('[P2P] 通道异常:', err);
+      console.warn('[P2P] 通道錯誤:', err);
       delete connections[conn.peer];
     });
   }
 
-  /**
-   * 连线至房间的主节点 (以房间号作为固定前缀尝试连接)
-   */
-  function connectToRoomPeers() {
-    // 尝试与同房间的前缀发起 P2P 连接
-    const targetBase = `cross-sub-${roomId}-`;
-    
-    // 如果已有其他设备在线，可以通过共享房间广播
-    // 同时也主动监听信令
-  }
+  // ── 對外 API ─────────────────────────────────────────────
 
   /**
-   * 廣播發送字幕訊息給房間內所有連線節點
+   * 廣播訊息給房間內所有已連線節點
    */
   function broadcast(payload) {
-    const activePeers = Object.values(connections);
-    activePeers.forEach(conn => {
+    const peers = Object.values(connections);
+    if (peers.length === 0) {
+      console.warn('[P2P] 目前無已連線節點，廣播未送出');
+    }
+    peers.forEach(conn => {
       if (conn && conn.open) {
-        try {
-          conn.send(payload);
-        } catch (e) {
+        try { conn.send(payload); } catch (e) {
           console.error('[P2P] 發送失敗:', e);
         }
       }
@@ -128,20 +183,18 @@ const P2PManager = (function() {
   }
 
   /**
-   * 主動連線至指定 Peer
+   * 主動連線至指定 Peer ID
    */
   function connectToPeer(targetPeerId) {
     if (!peer || targetPeerId === myPeerId) return;
-    const conn = peer.connect(targetPeerId);
+    const conn = peer.connect(targetPeerId, { reliable: true });
     setupConnection(conn);
   }
 
   /**
-   * 離開房間：銷毀 Peer 實例並清空所有連線
-   * NOTE: 呼叫後需由上層 UI 重置狀態
+   * 離開房間：關閉所有連線並銷毀 Peer 實例
    */
   function leaveRoom() {
-    // 關閉所有現有連線
     Object.values(connections).forEach(conn => {
       try { conn.close(); } catch (e) {}
     });
@@ -152,8 +205,9 @@ const P2PManager = (function() {
       peer = null;
     }
 
-    myPeerId = null;
-    roomId   = null;
+    myPeerId     = null;
+    roomId       = null;
+    effectiveKey = null;
 
     if (onStatusCallback) onStatusCallback('disconnected', '未加入房間');
   }

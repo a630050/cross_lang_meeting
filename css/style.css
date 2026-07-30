@@ -49,7 +49,9 @@ html, body {
 .app-container {
   display: flex;
   flex-direction: column;
+  /* NOTE: 100dvh 修正 iOS Safari 不計算底部工具列的問題，100vh 作為 fallback */
   height: 100vh;
+  height: 100dvh;
   max-width: 800px;
   margin: 0 auto;
   position: relative;
@@ -116,16 +118,13 @@ html, body {
 
 /* 控制面板 */
 .control-panel {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid var(--bg-card-border);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  /* NOTE: 限制最大高度防止控制列撐爆手機螢幕；超出時可上下捲動 */
-  max-height: 55vh;
-  overflow-y: auto;
-  flex-shrink: 0;
+  gap: 8px;
+  flex-shrink: 0; /* 不壓縮，讓字幕區取得剩餘高度 */
 }
 
 /* 暱稱輸入列 */
@@ -158,27 +157,30 @@ html, body {
 
 .room-bar {
   display: flex;
-  gap: 8px;
+  flex-direction: column; /* 垂直堆疊，確保任何螢幕寬度都看得到進入按鈕 */
+  gap: 7px;
 }
 .room-bar input {
-  flex: 1;
-  padding: 10px 14px;
+  width: 100%;
+  padding: 11px 14px;
   border-radius: 10px;
   border: 1px solid var(--bg-card-border);
   background: var(--bg-card);
   color: var(--text-primary);
   /* NOTE: font-size 至少 16px，防止 iOS Safari 自動觸發縮放 */
-  font-size: max(16px, 0.95rem);
+  font-size: 16px;
   outline: none;
-  min-width: 0; /* 防止 flex 子項溢出容器 */
+  min-width: 0;
 }
-/* 密碼欄固定寬度，不搶走房間碼空間 */
 #room-pwd-input {
-  flex: 0 0 130px;
-  font-size: max(16px, 0.85rem);
+  font-size: 16px;
 }
 .room-bar input:focus { border-color: var(--accent-color); }
-
+.room-bar .primary-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+}
 
 
 /* 已加入房間狀態列 */
@@ -254,37 +256,34 @@ html, body {
 .primary-btn:hover { background: var(--accent-hover); }
 
 
-.lang-selector-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* 語言選擇列（單列橫向）*/
+.lang-bar {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
-.lang-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.lang-group label {
-  font-size: 0.75rem;
+.lang-bar label {
+  font-size: 0.82rem;
   color: var(--text-secondary);
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.lang-group select {
-  padding: 8px 10px;
+.lang-bar select {
+  flex: 1;
+  padding: 9px 10px;
   border-radius: 8px;
   border: 1px solid var(--bg-card-border);
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: 16px; /* iOS 防縮放 */
   outline: none;
 }
-/* NOTE: 修正核心問題——暗色模式下瀏覽器原生下拉選單是白色背景，
-   必須對 option 設定發展金承色讓文字可見 */
-.lang-group select option {
+.lang-bar select option {
   background-color: #1a1d26;
   color: #F3F4F6;
 }
-body.light-theme .lang-group select option {
+body.light-theme .lang-bar select option {
   background-color: #ffffff;
   color: #0F172A;
 }
@@ -440,8 +439,8 @@ body.light-theme .lang-group select option {
   border-bottom-left-radius: 4px; /* 气泡尖角 */
 }
 
-/* 原始辨识文字 */
-.original-text {
+/* 氣泡主要文字（自己=原文、對方=翻譯）*/
+.bubble-main-text {
   font-size: var(--subtitle-font-size);
   line-height: var(--subtitle-line-height);
   font-weight: 600;
@@ -450,60 +449,31 @@ body.light-theme .lang-group select option {
   padding: 4px 6px;
   border-radius: 8px;
   transition: background 0.2s ease, outline 0.15s ease;
-  cursor: pointer;
   user-select: text;
 }
 
-/* 可编辑状态（自己的气泡点击后） */
-.original-text[contenteditable="true"] {
+/* 自己氣泡：可點擊編輯 */
+.self-card .bubble-main-text {
+  cursor: pointer;
+}
+.bubble-main-text.editing {
   outline: 2px dashed rgba(99, 102, 241, 0.7);
   background: rgba(59, 130, 246, 0.12);
   cursor: text;
-  border-radius: 8px;
 }
-.self-card .original-text:not([contenteditable="true"]):hover {
+.self-card .bubble-main-text:not(.editing):hover {
   background: rgba(59, 130, 246, 0.1);
 }
 
-/* 编辑提示徽章 */
-.edit-hint-badge {
+/* 對方氣泡：翻譯小標籤 */
+.translate-label {
   font-size: 0.68rem;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60A5FA;
-  padding: 2px 7px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-.edit-hint-badge:hover {
-  background: var(--accent-color);
-  color: white;
-  transform: scale(1.05);
-}
-
-/* 翻译文字 */
-.translated-text {
-  font-size: var(--subtitle-translated-size);
-  line-height: var(--subtitle-line-height);
-  font-weight: 500;
-  color: #FAC858;
-  word-break: break-word;
+  color: var(--text-secondary);
   padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  transition: opacity 0.3s ease;
+  opacity: 0.7;
 }
 
-/* 重新翻译时的闪烁动画 */
-.translated-text.retranslating {
-  opacity: 0.4;
-  animation: textBlink 0.6s ease-in-out infinite alternate;
-}
-
-@keyframes textBlink {
-  from { opacity: 0.3; }
-  to   { opacity: 0.7; }
-}
 
 .interim-card {
   background: rgba(59, 130, 246, 0.1);
@@ -652,137 +622,87 @@ body.light-theme .lang-group select option {
 
 /* ==========================================================================
    RWD 響應式設計 - 手機優先調整
+   NOTE: room-bar 已改為 flex-direction:column，在任何寬度都能正常垂直顯示
    ========================================================================== */
 
-/* ── 平板 / 大手機（≤ 600px）── */
+/* ── ≤ 600px（手機直式）── */
 @media (max-width: 600px) {
-  :root {
-    --subtitle-font-size: 22px;
-    --subtitle-translated-size: 18px;
-  }
-
-  .app-container {
-    max-width: 100%;
-    box-shadow: none;
-  }
-
-  /* Header 縮小 */
-  .app-header { padding: 10px 12px; }
-  .logo-title  { font-size: 0.95rem; }
-  .icon-btn    { padding: 7px 10px; font-size: 0.8rem; }
-
-  /* 控制面板縮小間距 */
-  .control-panel { padding: 10px 12px; gap: 8px; }
-
-  /* 暱稱列 */
-  .name-bar { padding: 7px 10px; }
-  .name-bar input { font-size: 0.9rem; }
-
-  /* 房間列：橫向自動換行，進入按鈕強制独佔第二行（100%）保證永遠看得到 */
-  .room-bar       { flex-wrap: wrap; gap: 6px; }
-  #room-id-input  { flex: 1; min-width: 80px; }    /* 第一行：房間碼 */
-  #room-pwd-input { flex: 0 0 105px; font-size: 0.8rem; } /* 第一行：密碼（固定寬） */
-  #join-room-btn  { flex: 1 1 100%; }              /* 第二行：全寬捘9 */
-
-  /* 已加入列 */
-  .room-joined-bar { padding: 8px 12px; }
-  .room-joined-info { font-size: 0.82rem; }
-  .leave-btn { padding: 6px 10px; font-size: 0.8rem; }
-
-  /* 語言選單：兩欄縮小 */
-  .lang-selector-bar { gap: 6px; }
-  .lang-group label  { font-size: 0.7rem; }
-  .lang-group select { padding: 7px 8px; font-size: 0.8rem; }
-
-  /* 氣泡：幾乎全寬 */
-  .bubble-row     { max-width: 94%; }
-  .bubble-content { min-width: 0; }
-
-  /* 頭像縮小 */
-  .avatar-circle { width: 34px; height: 34px; font-size: 0.85rem; }
-  .avatar-label  { font-size: 0.55rem; max-width: 38px; }
-  .bubble-row    { gap: 7px; }
-
-  /* 氣泡尖角方向維持，僅縮小 padding */
-  .subtitle-card { padding: 10px 12px; border-radius: 14px; }
-
-  /* 底部控制列 */
-  .app-footer     { padding: 10px 12px; }
-  .footer-controls { gap: 8px; }
-  .mic-btn        { padding: 13px 10px; font-size: 0.95rem; }
-  .tool-btn       { padding: 10px 10px; font-size: 0.8rem; }
-  .font-controls  { gap: 4px; }
-
-  /* 浮動置底按鈕 */
-  .scroll-bottom-btn { bottom: 72px; right: 12px; padding: 8px 14px; font-size: 0.85rem; }
-
-  /* 中間字幕區 */
-  .subtitle-container { padding: 12px; gap: 10px; }
-  .subtitles-list     { gap: 12px; }
-  .interim-card       { font-size: var(--subtitle-font-size); padding: 8px 12px; }
-}
-
-/* ── 小手機（≤ 420px）── */
-@media (max-width: 420px) {
   :root {
     --subtitle-font-size: 20px;
     --subtitle-translated-size: 16px;
   }
 
-  /* 語言選單改為垂直單欄 */
-  .lang-selector-bar { grid-template-columns: 1fr; }
+  .app-container   { max-width: 100%; box-shadow: none; }
+  .app-header      { padding: 8px 12px; }
+  .logo-title      { font-size: 0.9rem; }
+  .icon-btn        { padding: 6px 10px; font-size: 0.78rem; }
 
-  /* 420px 以下：密碼欄更緊湊，遠入按鈕已由上層保證全寬 */
-  #room-pwd-input { flex: 0 0 90px; font-size: 0.78rem; }
+  .control-panel   { padding: 8px 12px; gap: 7px; }
+  .name-bar        { padding: 6px 10px; }
 
-  /* 氣泡幾乎全寬 */
-  .bubble-row { max-width: 97%; gap: 5px; }
+  .room-joined-bar  { padding: 7px 10px; }
+  .room-joined-info { font-size: 0.8rem; }
+  .leave-btn        { padding: 5px 10px; font-size: 0.78rem; }
 
-  /* 頭像再縮小 */
-  .avatar-circle { width: 30px; height: 30px; font-size: 0.75rem; }
-  .avatar-label  { font-size: 0.5rem; max-width: 32px; }
+  /* 氣泡接近全寬，頭像縮小 */
+  .bubble-row    { max-width: 95%; gap: 6px; }
+  .avatar-circle { width: 32px; height: 32px; font-size: 0.8rem; }
+  .avatar-label  { font-size: 0.52rem; max-width: 36px; }
+  .subtitle-card { padding: 10px 12px; border-radius: 14px; }
 
-  /* Header 行動版簡化 */
-  .logo-title { font-size: 0.88rem; }
-  .icon-btn   { padding: 6px 8px; font-size: 0.75rem; }
+  /* 字幕區縮小間距 */
+  .subtitle-container { padding: 10px; }
+  .subtitles-list     { gap: 10px; }
+  .interim-card       { padding: 8px 12px; font-size: var(--subtitle-font-size); }
 
-  /* 底部按鈕觸控最小高度 44px */
-  .mic-btn  { min-height: 48px; }
-  .tool-btn { min-height: 44px; }
+  /* 底部按鈕觸控最小高度 44px（Apple HIG 標準） */
+  .app-footer      { padding: 10px 12px; }
+  .footer-controls { gap: 8px; }
+  .mic-btn         { min-height: 48px; padding: 12px 10px; font-size: 0.95rem; }
+  .tool-btn        { min-height: 44px; padding: 10px; font-size: 0.8rem; }
+  .font-controls   { gap: 4px; }
+
+  .scroll-bottom-btn { bottom: 70px; right: 10px; padding: 7px 12px; font-size: 0.82rem; }
 }
 
-/* ── 超小手機（≤ 360px，例：舊款 Android）── */
-@media (max-width: 360px) {
+/* ── ≤ 380px（超小螢幕）── */
+@media (max-width: 380px) {
   :root {
     --subtitle-font-size: 18px;
     --subtitle-translated-size: 14px;
   }
 
-  .control-panel { padding: 8px 10px; gap: 6px; }
-
-  /* 已加入列：名稱縮短，按鈕只留圖示 */
-  .room-joined-info { font-size: 0.75rem; }
-  .leave-btn { padding: 5px 8px; font-size: 0.75rem; }
-
-  /* 頭像隱藏名稱標籤，節省空間 */
-  .avatar-label { display: none; }
-  .bubble-row   { gap: 4px; }
+  .logo-title    { font-size: 0.82rem; }
+  .icon-btn      { padding: 5px 8px; font-size: 0.72rem; }
+  .avatar-label  { display: none; }
+  .bubble-row    { max-width: 98%; gap: 4px; }
+  .control-panel { padding: 6px 10px; gap: 6px; }
 }
 
-/* ── 安全區域支援（iPhone 瀏海 / 底部 Home Bar）── */
+/* ── iPhone 安全區域（瀏海 / 底部 Home Bar）── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .app-footer {
-    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 }
 
+/* ── 編輯提示徽章（保留給 main.js 使用）── */
+.edit-hint-badge {
+  font-size: 0.65rem;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  padding: 2px 6px;
+  border-radius: 8px;
+  user-select: none;
+}
+
 @keyframes bubbleIn {
-  from { opacity: 0; transform: scale(0.85) translateY(12px); }
+  from { opacity: 0; transform: scale(0.87) translateY(10px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.02); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.03); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
 }

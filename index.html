@@ -8,13 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
-  <!-- PeerJS P2P 通信庫 -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <!-- QRCode.js 二維碼生成庫 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="dark-theme">
   <div class="app-container">
+
     <!-- 頂部導覽列 -->
     <header class="app-header">
       <div class="header-left">
@@ -26,23 +25,24 @@
       </div>
       <div class="header-actions">
         <button id="theme-toggle-btn" class="icon-btn" title="切換暗黑／白天模式">🌙</button>
-        <button id="share-room-btn" class="icon-btn highlight-btn" title="分享房間／QR碼">🔗 房間碼</button>
+        <button id="share-room-btn" class="icon-btn highlight-btn" title="分享房間 QR 碼">🔗 分享</button>
       </div>
     </header>
 
-    <!-- 控制與語言設定面板 -->
+    <!-- 控制面板 -->
     <section class="control-panel">
+
       <!-- 暱稱設定 -->
       <div class="name-bar">
         <span class="name-bar-icon">👤</span>
         <input type="text" id="nickname-input" placeholder="輸入您的暱稱（對方看得到）" maxlength="12" />
       </div>
 
-      <!-- 房間號加入控制（未加入時顯示） -->
+      <!-- 房間設定（未加入時顯示） -->
       <div class="room-bar" id="room-setup-bar">
-        <input type="text" id="room-id-input" placeholder="房間碼 (例：8888)" maxlength="12" />
-        <input type="password" id="room-pwd-input" placeholder="🔒 密碼（選填）" maxlength="20" />
-        <button id="join-room-btn" class="primary-btn">進入</button>
+        <input type="text"     id="room-id-input"  placeholder="房間碼 (例：8888)"  maxlength="12" />
+        <input type="password" id="room-pwd-input" placeholder="🔒 密碼（選填）"    maxlength="20" />
+        <button id="join-room-btn" class="primary-btn">進入房間</button>
       </div>
 
       <!-- 已加入狀態列（加入後顯示） -->
@@ -52,62 +52,42 @@
           <span>已加入房間 <strong id="joined-room-display"></strong></span>
           <span id="joined-lock-icon" style="display:none" title="此房間已設定密碼">🔒</span>
         </div>
-        <button id="leave-room-btn" class="leave-btn">🚪 離開房間</button>
+        <button id="leave-room-btn" class="leave-btn">🚪 離開</button>
       </div>
 
-
-      <!-- 語言選擇組合 -->
-      <div class="lang-selector-bar">
-        <div class="lang-group">
-          <label for="my-spoken-lang">🗣️ 我說的語言：</label>
-          <select id="my-spoken-lang">
-            <option value="zh-TW" selected>繁體中文（臺灣）</option>
-            <option value="zh-CN">簡體中文</option>
-            <option value="ja-JP">日本語（日本）</option>
-            <option value="en-US">English（US）</option>
-            <option value="ko-KR">한국어（韓國）</option>
-            <option value="es-ES">Español</option>
-            <option value="fr-FR">Français</option>
-            <option value="de-DE">Deutsch</option>
-            <option value="th-TH">ไทย（泰語）</option>
-            <option value="vi-VN">Tiếng Việt（越南）</option>
-          </select>
-        </div>
-
-        <div class="lang-group">
-          <label for="my-target-lang">🈳 我看的目標語言：</label>
-          <select id="my-target-lang">
-            <option value="ja">日本語（日本）</option>
-            <option value="zh-TW" selected>繁體中文（臺灣）</option>
-            <option value="zh-CN">簡體中文</option>
-            <option value="en">English（US）</option>
-            <option value="ko">한국어（韓國）</option>
-            <option value="es">Español</option>
-            <option value="fr">Français</option>
-            <option value="de">Deutsch</option>
-            <option value="th">ไทย（泰語）</option>
-            <option value="vi">Tiếng Việt（越南）</option>
-          </select>
-        </div>
+      <!-- 語言設定：只需設定「我說的語言」，對方的訊息自動翻譯成此語言 -->
+      <div class="lang-bar">
+        <label for="my-spoken-lang">🌏 我的語言：</label>
+        <select id="my-spoken-lang">
+          <option value="zh-TW" selected>繁體中文（臺灣）</option>
+          <option value="zh-CN">簡體中文</option>
+          <option value="ja-JP">日本語（日本）</option>
+          <option value="en-US">English（US）</option>
+          <option value="ko-KR">한국어（韓國）</option>
+          <option value="es-ES">Español</option>
+          <option value="fr-FR">Français</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="th-TH">ไทย（泰語）</option>
+          <option value="vi-VN">Tiếng Việt（越南）</option>
+        </select>
       </div>
+
     </section>
 
     <!-- 字幕主顯示區域 -->
     <main class="subtitle-container" id="subtitle-container">
       <div class="welcome-card" id="welcome-card">
         <h2>👋 歡迎使用跨語言即時字幕機</h2>
-        <p>1. 請在上方輸入房間碼並點擊【進入／創建房間】。</p>
-        <p>2. 設定您說話的語言與您想看的翻譯語言。</p>
-        <p>3. 點擊下方【🎤 開啟收音】即可開始對講字幕！</p>
+        <p>1. 輸入暱稱與房間碼，點擊【進入房間】。</p>
+        <p>2. 設定您說話的語言（對方訊息也會翻成此語言）。</p>
+        <p>3. 點擊下方【🎤 開啟收音】即可開始對講！</p>
       </div>
 
-      <div class="subtitles-list" id="subtitles-list">
-        <!-- 動態字幕氣泡掛載區 -->
-      </div>
+      <div class="subtitles-list" id="subtitles-list"></div>
 
-      <!-- 即時臨時收音（Interim）提示卡片 -->
+      <!-- 即時辨識中提示 -->
       <div class="interim-card" id="interim-card" style="display: none;">
-        <span class="interim-badge">🎙️ 正在收音...</span>
+        <span class="interim-badge">🎙️ 正在辨識...</span>
         <span class="interim-text" id="interim-text"></span>
       </div>
     </main>
@@ -124,17 +104,16 @@
           <span class="mic-icon">🎤</span>
           <span class="mic-text">開啟收音</span>
         </button>
-
         <div class="font-controls">
           <button id="font-dec-btn" class="tool-btn" title="縮小字號">A-</button>
           <button id="font-inc-btn" class="tool-btn" title="放大字號">A+</button>
-          <button id="clear-subtitles-btn" class="tool-btn danger-tool" title="清空字幕">🗑️ 清空</button>
+          <button id="clear-subtitles-btn" class="tool-btn danger-tool" title="清空字幕">🗑️</button>
         </div>
       </div>
     </footer>
   </div>
 
-  <!-- 分享房間 Modal 彈窗 -->
+  <!-- 分享房間 Modal -->
   <div class="modal-backdrop" id="share-modal" style="display: none;">
     <div class="modal-content">
       <button class="modal-close-btn" id="close-share-modal-btn">✕</button>
@@ -148,7 +127,6 @@
     </div>
   </div>
 
-  <!-- JS JavaScript 邏輯模組 -->
   <script src="js/translate.js"></script>
   <script src="js/speech.js"></script>
   <script src="js/p2p.js"></script>
