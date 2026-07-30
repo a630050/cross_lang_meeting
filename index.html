@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>跨语言实时对讲字幕机 - Cross-Lang Subtitles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- PeerJS P2P 通信库 -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- QRCode.js 二维码生成库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="dark-theme">
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="logo-title">🌐 跨语对讲字幕</h1>
+        <div class="connection-status" id="connection-status">
+          <span class="status-dot disconnected"></span>
+          <span class="status-text" id="status-text">未加入房间</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle-btn" class="icon-btn" title="切换暗黑/白天模式">🌙</button>
+        <button id="share-room-btn" class="icon-btn highlight-btn" title="分享房间/二维码">🔗 房间码</button>
+      </div>
+    </header>
+
+    <!-- 控制与语言设置面板 -->
+    <section class="control-panel">
+      <!-- 房间号加入控制 -->
+      <div class="room-bar" id="room-setup-bar">
+        <input type="text" id="room-id-input" placeholder="输入4位房间码 (例: 8888)" maxlength="12" />
+        <button id="join-room-btn" class="primary-btn">进入/创建房间</button>
+      </div>
+
+      <!-- 语言选择组合 -->
+      <div class="lang-selector-bar">
+        <div class="lang-group">
+          <label for="my-spoken-lang">🗣️ 我说的语言:</label>
+          <select id="my-spoken-lang">
+            <option value="zh-TW" selected>繁体中文 (臺灣)</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="ja-JP">日本語 (日本)</option>
+            <option value="en-US">English (US)</option>
+            <option value="ko-KR">한국어 (韩国)</option>
+            <option value="es-ES">Español</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="th-TH">ไทย (泰语)</option>
+            <option value="vi-VN">Tiếng Việt (越南)</option>
+          </select>
+        </div>
+
+        <div class="lang-group">
+          <label for="my-target-lang">🈳 我看的目标语言:</label>
+          <select id="my-target-lang">
+            <option value="ja">日本語 (日本)</option>
+            <option value="zh-TW" selected>繁体中文 (臺灣)</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English (US)</option>
+            <option value="ko">한국어 (韩国)</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="th">ไทย (泰语)</option>
+            <option value="vi">Tiếng Việt (越南)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- 字幕主显示区域 -->
+    <main class="subtitle-container" id="subtitle-container">
+      <div class="welcome-card" id="welcome-card">
+        <h2>👋 欢迎使用跨语言实时字幕机</h2>
+        <p>1. 请在上方输入房间码并点击【进入/创建房间】。</p>
+        <p>2. 设定您发音的语言与您想看的翻译语言。</p>
+        <p>3. 点击下方【🎤 开启收音】即可开始对讲字幕！</p>
+      </div>
+
+      <div class="subtitles-list" id="subtitles-list">
+        <!-- 动态字幕卡片挂载区 -->
+      </div>
+
+      <!-- 实时临时收音（Interim）提示卡片 -->
+      <div class="interim-card" id="interim-card" style="display: none;">
+        <span class="interim-badge">🎙️ 正在收音...</span>
+        <span class="interim-text" id="interim-text"></span>
+      </div>
+    </main>
+
+    <!-- 浮动置底按钮 -->
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn" style="display: none;">
+      ↓ 返回底部
+    </button>
+
+    <!-- 底部功能控制栏 -->
+    <footer class="app-footer">
+      <div class="footer-controls">
+        <button id="mic-toggle-btn" class="mic-btn disabled" disabled>
+          <span class="mic-icon">🎤</span>
+          <span class="mic-text">开启收音</span>
+        </button>
+
+        <div class="font-controls">
+          <button id="font-dec-btn" class="tool-btn" title="缩小字号">A-</button>
+          <button id="font-inc-btn" class="tool-btn" title="放大字号">A+</button>
+          <button id="clear-subtitles-btn" class="tool-btn danger-tool" title="清空字幕">🗑️ 清空</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 分享房间 Modal 弹窗 -->
+  <div class="modal-backdrop" id="share-modal" style="display: none;">
+    <div class="modal-content">
+      <button class="modal-close-btn" id="close-share-modal-btn">✕</button>
+      <h3>📱 扫码/分享加入房间</h3>
+      <p class="modal-room-info">房间码：<strong id="modal-room-id-display">----</strong></p>
+      <div class="qrcode-wrapper" id="qrcode-container"></div>
+      <div class="copy-url-bar">
+        <input type="text" id="share-url-input" readonly />
+        <button id="copy-url-btn" class="primary-btn">复制链接</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS JavaScript 逻辑模块Demarcation -->
+  <script src="js/translate.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/p2p.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
