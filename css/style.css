@@ -620,6 +620,110 @@ body.light-theme .lang-bar select option {
   color: var(--text-primary); font-size: 0.8rem;
 }
 
+/* ══ 設定 Modal 專用樣式 ══ */
+.settings-modal-content {
+  max-width: 420px;
+  width: 92%;
+  text-align: left;      /* 設定表單靠左對齊 */
+  padding: 28px 24px 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.settings-modal-content h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+/* 設定欄位 */
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.settings-field label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--bg-card-border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 16px; /* iOS 防縮放 */
+  outline: none;
+  transition: border-color 0.2s;
+}
+.settings-field input:focus,
+.settings-field select:focus {
+  border-color: var(--accent-color);
+}
+.settings-field select option {
+  background-color: #1a1d26;
+  color: #F3F4F6;
+}
+body.light-theme .settings-field select option {
+  background-color: #ffffff;
+  color: #0F172A;
+}
+
+/* 全寬按鈕 */
+.full-width-btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 1rem;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+/* 設定 Modal 內的分隔線 */
+#settings-join-section {
+  border-bottom: 1px solid var(--bg-card-border);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+#settings-joined-section {
+  border-bottom: 1px solid var(--bg-card-border);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+/* 已加入徽章 */
+.settings-joined-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.settings-joined-badge strong {
+  color: #34D399;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+/* 開始使用按鈕（進入後顯示）*/
+#start-using-btn {
+  background: linear-gradient(135deg, #10B981, #06B6D4);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+#start-using-btn:hover {
+  background: linear-gradient(135deg, #059669, #0891B2);
+}
+
+
 /* ==========================================================================
    RWD 響應式設計 - 手機優先調整
    NOTE: room-bar 已改為 flex-direction:column，在任何寬度都能正常垂直顯示

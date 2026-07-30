@@ -14,7 +14,7 @@
 <body class="dark-theme">
   <div class="app-container">
 
-    <!-- 頂部導覽列 -->
+    <!-- 頂部導覽列（精簡版，設定全移入 Modal）-->
     <header class="app-header">
       <div class="header-left">
         <h1 class="logo-title">🌐 跨語對講字幕</h1>
@@ -24,80 +24,30 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="theme-toggle-btn" class="icon-btn" title="切換暗黑／白天模式">🌙</button>
-        <button id="share-room-btn" class="icon-btn highlight-btn" title="分享房間 QR 碼">🔗 分享</button>
+        <button id="theme-toggle-btn" class="icon-btn" title="切換主題">🌙</button>
+        <!-- 設定按鈕：點擊開啟設定 Modal -->
+        <button id="settings-btn" class="icon-btn highlight-btn" title="開啟設定">⚙️ 設定</button>
+        <button id="share-room-btn" class="icon-btn" title="分享房間 QR 碼" style="display:none">🔗 分享</button>
       </div>
     </header>
 
-    <!-- 控制面板 -->
-    <section class="control-panel">
-
-      <!-- 暱稱設定 -->
-      <div class="name-bar">
-        <span class="name-bar-icon">👤</span>
-        <input type="text" id="nickname-input" placeholder="輸入您的暱稱（對方看得到）" maxlength="12" />
-      </div>
-
-      <!-- 房間設定（未加入時顯示） -->
-      <div class="room-bar" id="room-setup-bar">
-        <input type="text"     id="room-id-input"  placeholder="房間碼 (例：8888)"  maxlength="12" />
-        <input type="password" id="room-pwd-input" placeholder="🔒 密碼（選填）"    maxlength="20" />
-        <button id="join-room-btn" class="primary-btn">進入房間</button>
-      </div>
-
-      <!-- 已加入狀態列（加入後顯示） -->
-      <div class="room-joined-bar" id="room-joined-bar" style="display:none">
-        <div class="room-joined-info">
-          <span class="joined-dot"></span>
-          <span>已加入房間 <strong id="joined-room-display"></strong></span>
-          <span id="joined-lock-icon" style="display:none" title="此房間已設定密碼">🔒</span>
-        </div>
-        <button id="leave-room-btn" class="leave-btn">🚪 離開</button>
-      </div>
-
-      <!-- 語言設定：只需設定「我說的語言」，對方的訊息自動翻譯成此語言 -->
-      <div class="lang-bar">
-        <label for="my-spoken-lang">🌏 我的語言：</label>
-        <select id="my-spoken-lang">
-          <option value="zh-TW" selected>繁體中文（臺灣）</option>
-          <option value="zh-CN">簡體中文</option>
-          <option value="ja-JP">日本語（日本）</option>
-          <option value="en-US">English（US）</option>
-          <option value="ko-KR">한국어（韓國）</option>
-          <option value="es-ES">Español</option>
-          <option value="fr-FR">Français</option>
-          <option value="de-DE">Deutsch</option>
-          <option value="th-TH">ไทย（泰語）</option>
-          <option value="vi-VN">Tiếng Việt（越南）</option>
-        </select>
-      </div>
-
-    </section>
-
-    <!-- 字幕主顯示區域 -->
+    <!-- 字幕主顯示區域（不再有控制列，最大化空間）-->
     <main class="subtitle-container" id="subtitle-container">
       <div class="welcome-card" id="welcome-card">
         <h2>👋 歡迎使用跨語言即時字幕機</h2>
-        <p>1. 輸入暱稱與房間碼，點擊【進入房間】。</p>
-        <p>2. 設定您說話的語言（對方訊息也會翻成此語言）。</p>
-        <p>3. 點擊下方【🎤 開啟收音】即可開始對講！</p>
+        <p>點擊右上角 <strong>⚙️ 設定</strong> 輸入暱稱與房間碼，即可開始對講！</p>
       </div>
-
       <div class="subtitles-list" id="subtitles-list"></div>
-
-      <!-- 即時辨識中提示 -->
       <div class="interim-card" id="interim-card" style="display: none;">
-        <span class="interim-badge">🎙️ 正在辨識...</span>
+        <span class="interim-badge">🎙️ 辨識中...</span>
         <span class="interim-text" id="interim-text"></span>
       </div>
     </main>
 
     <!-- 浮動置底按鈕 -->
-    <button id="scroll-bottom-btn" class="scroll-bottom-btn" style="display: none;">
-      ↓ 回到底部
-    </button>
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn" style="display: none;">↓ 底部</button>
 
-    <!-- 底部功能控制列 -->
+    <!-- 底部控制列 -->
     <footer class="app-footer">
       <div class="footer-controls">
         <button id="mic-toggle-btn" class="mic-btn disabled" disabled>
@@ -113,7 +63,67 @@
     </footer>
   </div>
 
-  <!-- 分享房間 Modal -->
+  <!-- ══ 設定 Modal（首次進入自動開啟）══ -->
+  <div class="modal-backdrop" id="settings-modal">
+    <div class="modal-content settings-modal-content">
+      <!-- 關閉按鈕（加入後才允許關閉）-->
+      <button class="modal-close-btn" id="close-settings-modal-btn" style="display:none">✕</button>
+      <h3>⚙️ 對講設定</h3>
+
+      <!-- 暱稱 -->
+      <div class="settings-field">
+        <label for="nickname-input">👤 我的暱稱（對方看得到）</label>
+        <input type="text" id="nickname-input" placeholder="輸入暱稱" maxlength="12" />
+      </div>
+
+      <!-- 加入前：房間碼 + 密碼 + 進入按鈕 -->
+      <div id="settings-join-section">
+        <div class="settings-field">
+          <label for="room-id-input">🚪 房間碼</label>
+          <input type="text" id="room-id-input" placeholder="4~12 位，如 8888" maxlength="12" />
+        </div>
+        <div class="settings-field">
+          <label for="room-pwd-input">🔒 密碼（選填）</label>
+          <input type="password" id="room-pwd-input" placeholder="留空表示公開房間" maxlength="20" />
+        </div>
+        <button id="join-room-btn" class="primary-btn full-width-btn">進入房間</button>
+      </div>
+
+      <!-- 加入後：狀態 + 離開按鈕 -->
+      <div id="settings-joined-section" style="display:none">
+        <div class="settings-joined-badge">
+          <span class="joined-dot"></span>
+          <span>已加入房間 <strong id="joined-room-display"></strong></span>
+          <span id="joined-lock-icon" style="display:none" title="已設密碼">🔒</span>
+        </div>
+        <button id="leave-room-btn" class="leave-btn full-width-btn">🚪 離開房間</button>
+      </div>
+
+      <!-- 語言設定（加入前後都可調整）-->
+      <div class="settings-field">
+        <label for="my-spoken-lang">🌏 我的語言（辨識 + 翻譯目標）</label>
+        <select id="my-spoken-lang">
+          <option value="zh-TW" selected>繁體中文（臺灣）</option>
+          <option value="zh-CN">簡體中文</option>
+          <option value="ja-JP">日本語（日本）</option>
+          <option value="en-US">English（US）</option>
+          <option value="ko-KR">한국어（韓國）</option>
+          <option value="es-ES">Español</option>
+          <option value="fr-FR">Français</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="th-TH">ไทย（泰語）</option>
+          <option value="vi-VN">Tiếng Việt（越南）</option>
+        </select>
+      </div>
+
+      <!-- 加入後才顯示「開始使用」按鈕 -->
+      <button id="start-using-btn" class="primary-btn full-width-btn" style="display:none">
+        ✅ 開始使用
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ 分享房間 Modal ══ -->
   <div class="modal-backdrop" id="share-modal" style="display: none;">
     <div class="modal-content">
       <button class="modal-close-btn" id="close-share-modal-btn">✕</button>
