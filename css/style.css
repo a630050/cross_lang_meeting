@@ -166,7 +166,13 @@ html, body {
   font-size: 0.95rem;
   outline: none;
 }
+/* 密碼欄固定寬度，不搶走房間碼空間 */
+#room-pwd-input {
+  flex: 0 0 130px;
+  font-size: 0.85rem;
+}
 .room-bar input:focus { border-color: var(--accent-color); }
+
 
 /* 已加入房間狀態列 */
 .room-joined-bar {

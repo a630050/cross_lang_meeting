@@ -11,16 +11,33 @@ const P2PManager = (function() {
   let onStatusCallback = null;
 
   /**
+   * 简单的字符串哈希函数
+   */
+  function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
    * 初始化 P2P 实例并建立/加入房间
    * @param {string} roomCode 4~12 位房间号 (如 '8888')
+   * @param {string} password 房间密码（空白则表示无密码）
    */
-  function joinRoom(roomCode, onStatus, onData) {
+  function joinRoom(roomCode, password, onStatus, onData) {
     roomId = roomCode.trim().toLowerCase();
     onStatusCallback = onStatus;
     onDataCallback = onData;
 
+    // NOTE: 密码杂凑后混入 Peer ID 前缀，不同密码的人对方找不到对方
+    const pwdSuffix  = password ? `-${simpleHash(password.trim())}` : '';
+    const effectiveKey = `${roomId}${pwdSuffix}`;
+
     // 为该设备随机生成唯一的 Peer ID 标识
-    myPeerId = `cross-sub-${roomId}-${Math.random().toString(36).substring(2, 8)}`;
+    myPeerId = `cross-sub-${effectiveKey}-${Math.random().toString(36).substring(2, 8)}`;
 
     if (peer) {
       try { peer.destroy(); } catch(e) {}

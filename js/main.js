@@ -5,10 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM 元素引用
   const nicknameInput      = document.getElementById('nickname-input');
   const roomIdInput        = document.getElementById('room-id-input');
+  const roomPwdInput       = document.getElementById('room-pwd-input');
   const joinRoomBtn        = document.getElementById('join-room-btn');
   const roomSetupBar       = document.getElementById('room-setup-bar');
   const roomJoinedBar      = document.getElementById('room-joined-bar');
   const joinedRoomDisplay  = document.getElementById('joined-room-display');
+  const joinedLockIcon     = document.getElementById('joined-lock-icon');
   const leaveRoomBtn       = document.getElementById('leave-room-btn');
   const mySpokenLangSelect = document.getElementById('my-spoken-lang');
   const myTargetLangSelect = document.getElementById('my-target-lang');
@@ -71,11 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * 加入房間後切換 UI：隱藏輸入列，顯示已加入狀態列
+   * @param {string}  roomCode - 房間碼
+   * @param {boolean} hasPwd   - 是否設有密碼
    */
-  function switchToJoinedUI(roomCode) {
-    roomSetupBar.style.display      = 'none';
-    roomJoinedBar.style.display     = 'flex';
-    joinedRoomDisplay.textContent   = roomCode.toUpperCase();
+  function switchToJoinedUI(roomCode, hasPwd) {
+    roomSetupBar.style.display    = 'none';
+    roomJoinedBar.style.display   = 'flex';
+    joinedRoomDisplay.textContent = roomCode.toUpperCase();
+    // 有密碼時顯示🔒図示
+    joinedLockIcon.style.display  = hasPwd ? 'inline' : 'none';
   }
 
   /**
@@ -96,18 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    currentRoomId         = roomCode.trim().toLowerCase();
-    roomIdInput.value     = currentRoomId;
+    currentRoomId     = roomCode.trim().toLowerCase();
+    roomIdInput.value = currentRoomId;
+    const password    = (roomPwdInput.value || '').trim();
 
     // 啟用收音按鈕
     micToggleBtn.disabled = false;
     micToggleBtn.classList.remove('disabled');
 
     // 切換至已加入狀態 UI
-    switchToJoinedUI(currentRoomId);
+    switchToJoinedUI(currentRoomId, !!password);
 
-    // 初始化 P2P 連線
-    P2PManager.joinRoom(currentRoomId, handleP2PStatus, handleP2PData);
+    // 初始化 P2P 連線，密碼一併傳入
+    P2PManager.joinRoom(currentRoomId, password, handleP2PStatus, handleP2PData);
   }
 
   /**

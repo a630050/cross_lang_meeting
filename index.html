@@ -40,8 +40,9 @@
 
       <!-- 房間號加入控制（未加入時顯示） -->
       <div class="room-bar" id="room-setup-bar">
-        <input type="text" id="room-id-input" placeholder="輸入房間碼 (例：8888)" maxlength="12" />
-        <button id="join-room-btn" class="primary-btn">進入／創建房間</button>
+        <input type="text" id="room-id-input" placeholder="房間碼 (例：8888)" maxlength="12" />
+        <input type="password" id="room-pwd-input" placeholder="🔒 密碼（選填）" maxlength="20" />
+        <button id="join-room-btn" class="primary-btn">進入</button>
       </div>
 
       <!-- 已加入狀態列（加入後顯示） -->
@@ -49,9 +50,11 @@
         <div class="room-joined-info">
           <span class="joined-dot"></span>
           <span>已加入房間 <strong id="joined-room-display"></strong></span>
+          <span id="joined-lock-icon" style="display:none" title="此房間已設定密碼">🔒</span>
         </div>
         <button id="leave-room-btn" class="leave-btn">🚪 離開房間</button>
       </div>
+
 
       <!-- 語言選擇組合 -->
       <div class="lang-selector-bar">
