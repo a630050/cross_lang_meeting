@@ -1,9 +1,32 @@
 /**
  * 主控制邏輯
- * 設計說明：所有設定（暱稱/房間/密碼/語言）集中在 settings-modal，
- * 首次開啟自動顯示，加入房間後可關閉以最大化字幕顯示區域。
+ * 設計說明：
+ *   - 設定 Modal 首次開啟自動顯示
+ *   - 輸入模式：文字輸入（textarea）或語音（麥克風 FAB）
+ *   - 氣泡規則：自己=原文（可修改/刪除），對方=翻譯
+ *   - 連線通知：新成員加入時顯示系統通知泡泡
  */
 document.addEventListener('DOMContentLoaded', () => {
+
+  // ── 語言旗標對照表 ────────────────────────────────────────
+  const LANG_DISPLAY = {
+    'zh-TW': { flag: '🇹🇼', code: 'ZHT' },
+    'zh-CN': { flag: '🇨🇳', code: 'ZHS' },
+    'ja-JP': { flag: '🇯🇵', code: 'JPN' },
+    'en-US': { flag: '🇺🇸', code: 'ENG' },
+    'ko-KR': { flag: '🇰🇷', code: 'KOR' },
+    'es-ES': { flag: '🇪🇸', code: 'ESP' },
+    'fr-FR': { flag: '🇫🇷', code: 'FRA' },
+    'de-DE': { flag: '🇩🇪', code: 'DEU' },
+    'th-TH': { flag: '🇹🇭', code: 'THA' },
+    'vi-VN': { flag: '🇻🇳', code: 'VIE' },
+  };
+
+  /** 取得語言的旗標與縮寫；未定義的語言用🌐+前3碼 */
+  function getLangInfo(langCode) {
+    return LANG_DISPLAY[langCode] ||
+      { flag: '🌐', code: (langCode || 'UNK').substring(0, 3).toUpperCase() };
+  }
 
   // ── DOM 引用 ─────────────────────────────────────────────
   const nicknameInput          = document.getElementById('nickname-input');
@@ -38,7 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const interimCard            = document.getElementById('interim-card');
   const interimText            = document.getElementById('interim-text');
 
-  const micToggleBtn           = document.getElementById('mic-toggle-btn');
+  const micFab                 = document.getElementById('mic-fab');
+  const textInput              = document.getElementById('text-input');
+  const sendTextBtn            = document.getElementById('send-text-btn');
   const fontDecBtn             = document.getElementById('font-dec-btn');
   const fontIncBtn             = document.getElementById('font-inc-btn');
   const clearSubtitlesBtn      = document.getElementById('clear-subtitles-btn');
@@ -50,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let shouldAutoScroll     = true;
   let isProgrammaticScroll = false;
   let currentFontSize      = 26;
-  // NOTE: 追蹤目前已展開刪除按鈕的氣泡列，確保同時只有一個展開
+  // NOTE: 追蹤目前已展開刪除按鈕的氣泡列，確保同時只有一個
   let activeRevealedRow    = null;
 
-  // ── 初始化：自動彈出設定 Modal ───────────────────────────
+  // ── 初始化 ───────────────────────────────────────────────
   settingsModal.style.display = 'flex';
   initFromUrlParams();
   setupSpeechEngineCallbacks();
@@ -62,43 +87,46 @@ document.addEventListener('DOMContentLoaded', () => {
   function initFromUrlParams() {
     const params = new URLSearchParams(window.location.search);
     const room   = params.get('room');
-    if (room) {
-      roomIdInput.value = room;
-    }
+    if (room) roomIdInput.value = room;
   }
 
-  // ── 工具 ─────────────────────────────────────────────────
-  function getMyName() {
-    return (nicknameInput.value || '').trim() || '我';
-  }
-  function getMyLang() {
-    return myLangSelect.value;
-  }
+  // ── 工具函式 ─────────────────────────────────────────────
+  function getMyName() { return (nicknameInput.value || '').trim() || '我'; }
+  function getMyLang() { return myLangSelect.value; }
 
-  // ── 設定 Modal 開關 ───────────────────────────────────────
-  function openSettingsModal() {
-    settingsModal.style.display = 'flex';
-  }
-
+  // ── 設定 Modal ───────────────────────────────────────────
+  function openSettingsModal()  { settingsModal.style.display = 'flex'; }
   function closeSettingsModal() {
-    // 未加入房間時不允許關閉
-    if (!currentRoomId) return;
+    if (!currentRoomId) return; // 未加入房間不允許關閉
     settingsModal.style.display = 'none';
+  }
+
+  // ── 輸入控件啟用 / 停用 ──────────────────────────────────
+  function enableInputs() {
+    micFab.disabled      = false;  micFab.classList.remove('disabled');
+    textInput.disabled   = false;
+    sendTextBtn.disabled = false;
+  }
+
+  function disableInputs() {
+    if (SpeechEngine.isListening()) {
+      SpeechEngine.stop();
+      micFab.classList.remove('active');
+      micFab.textContent = '🎤';
+    }
+    micFab.disabled      = true;  micFab.classList.add('disabled');
+    textInput.disabled   = true;  textInput.value = '';
+    sendTextBtn.disabled = true;
   }
 
   // ── 房間管理 ─────────────────────────────────────────────
   function switchToJoinedUI(roomCode, hasPwd) {
-    // 設定 Modal 內切換顯示
     settingsJoinSection.style.display    = 'none';
     settingsJoinedSection.style.display  = 'block';
     joinedRoomDisplay.textContent        = roomCode.toUpperCase();
     joinedLockIcon.style.display         = hasPwd ? 'inline' : 'none';
-
-    // 允許關閉 Modal + 顯示「開始使用」按鈕
     closeSettingsModalBtn.style.display  = 'inline-block';
     startUsingBtn.style.display          = 'block';
-
-    // Header 顯示分享按鈕
     shareRoomBtn.style.display           = 'inline-flex';
   }
 
@@ -111,60 +139,69 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function joinRoom(roomCode) {
-    if (!roomCode || !roomCode.trim()) {
-      alert('請輸入房間碼！');
-      return;
-    }
+    if (!roomCode || !roomCode.trim()) { alert('請輸入房間碼！'); return; }
     currentRoomId = roomCode.trim().toLowerCase();
     const password = (roomPwdInput.value || '').trim();
-
-    micToggleBtn.disabled = false;
-    micToggleBtn.classList.remove('disabled');
-
+    enableInputs();
     switchToJoinedUI(currentRoomId, !!password);
     P2PManager.joinRoom(currentRoomId, password, handleP2PStatus, handleP2PData);
   }
 
   function leaveRoom() {
-    if (SpeechEngine.isListening()) {
-      SpeechEngine.stop();
-      micToggleBtn.classList.remove('active');
-      micToggleBtn.querySelector('.mic-text').textContent = '開啟收音';
-    }
+    disableInputs();
     P2PManager.leaveRoom();
     currentRoomId = '';
-    micToggleBtn.disabled = true;
-    micToggleBtn.classList.add('disabled');
     switchToSetupUI();
     openSettingsModal();
   }
 
   // ── P2P 回呼 ─────────────────────────────────────────────
+  /**
+   * 連線狀態更新
+   * NOTE: 成功連線時廣播 join 事件，讓對方知道新成員進入
+   */
   function handleP2PStatus(status, message) {
     statusText.textContent = message;
     statusDot.className    = `status-dot ${status}`;
+
+    if (status === 'connected' && message.includes('成功連線')) {
+      showSystemNotice('✅ 已與對方建立連線！');
+      // 延遲廣播，確保資料通道已穩定
+      setTimeout(() => {
+        P2PManager.broadcast({ type: 'join', sender: getMyName(), timestamp: Date.now() });
+      }, 300);
+    }
   }
 
+  /**
+   * 收到對方資料
+   * type === 'join'：系統通知（新成員加入）
+   * 其他：翻譯後顯示為對方氣泡
+   */
   async function handleP2PData(data) {
-    if (!data || !data.text) return;
+    if (!data) return;
+
+    // 系統事件：對方加入房間
+    if (data.type === 'join') {
+      showSystemNotice(`👥 ${data.sender || '對方'} 進入了房間`);
+      return;
+    }
+
+    if (!data.text) return;
     if (welcomeCard) welcomeCard.style.display = 'none';
 
-    const cardId   = `peer-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+    const cardId   = `peer-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
     const bubbleEl = createSubtitleCard({
       id:          cardId,
       isSelf:      false,
       sender:      data.sender || '對方',
       displayText: '翻譯中...',
+      spokenLang:  data.spokenLang,
     });
     subtitlesList.appendChild(bubbleEl);
     checkAndAutoScroll();
 
-    // 翻譯成「我的語言」
-    const translated = await Translator.translate(
-      data.text,
-      getMyLang(),
-      data.spokenLang || 'auto'
-    );
+    const translated = await Translator.translate(data.text, getMyLang(), data.spokenLang || 'auto');
     const textEl = bubbleEl.querySelector('.bubble-main-text');
     if (textEl) textEl.textContent = translated || data.text;
     checkAndAutoScroll();
@@ -174,50 +211,57 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupSpeechEngineCallbacks() {
     SpeechEngine.setCallbacks({
       onInterim: (text) => {
-        if (!text || !text.trim()) {
-          interimCard.style.display = 'none';
-          return;
-        }
+        if (!text || !text.trim()) { interimCard.style.display = 'none'; return; }
         interimCard.style.display = 'flex';
         interimText.textContent   = text;
         checkAndAutoScroll();
       },
-      onFinal: async (finalText) => {
+      onFinal: (finalText) => {
         interimCard.style.display = 'none';
         if (!finalText || !finalText.trim()) return;
         if (welcomeCard) welcomeCard.style.display = 'none';
-
-        const myName = getMyName();
-        const myLang = getMyLang();
-
-        const bubbleEl = createSubtitleCard({
-          id:          `self-${Date.now()}`,
-          isSelf:      true,
-          sender:      myName,
-          displayText: finalText,
-          spokenLang:  myLang,
-        });
-        subtitlesList.appendChild(bubbleEl);
-        checkAndAutoScroll();
-
-        P2PManager.broadcast({
-          text:       finalText,
-          spokenLang: myLang,
-          sender:     myName,
-          timestamp:  Date.now()
-        });
+        addSelfBubble(finalText, false); // 語音輸入
       },
-      onError: (err) => { console.warn('[Speech] 辨識錯誤:', err); }
+      onError: (err) => console.warn('[Speech] 辨識錯誤:', err)
     });
+  }
+
+  /** 新增自己的氣泡（語音 or 文字輸入都走這裡，廣播給對方）*/
+  function addSelfBubble(text, isTyped = false) {
+    const myName = getMyName();
+    const myLang = getMyLang();
+
+    const bubbleEl = createSubtitleCard({
+      id:          `self-${Date.now()}`,
+      isSelf:      true,
+      sender:      myName,
+      displayText: text,
+      spokenLang:  myLang,
+      isTyped,
+    });
+    subtitlesList.appendChild(bubbleEl);
+    checkAndAutoScroll();
+
+    P2PManager.broadcast({ text, spokenLang: myLang, sender: myName, timestamp: Date.now() });
+  }
+
+  /** 顯示系統通知（連線/加入/離開等事件）*/
+  function showSystemNotice(message) {
+    if (welcomeCard) welcomeCard.style.display = 'none';
+    const notice       = document.createElement('div');
+    notice.className   = 'system-notice';
+    notice.textContent = message;
+    subtitlesList.appendChild(notice);
+    checkAndAutoScroll();
   }
 
   // ── 建立氣泡 ─────────────────────────────────────────────
   /**
    * 建立字幕氣泡元素
-   * 自己：只顯示原文（可點擊修改）
-   * 對方：只顯示翻譯文字（不顯示「已翻譯」標籤節省空間）
+   * @param {object} opts
+   * @param {boolean} opts.isTyped - true=文字輸入，false=語音
    */
-  function createSubtitleCard({ id, isSelf, sender, displayText, spokenLang }) {
+  function createSubtitleCard({ id, isSelf, sender, displayText, spokenLang, isTyped = false }) {
     const timeStr = new Date().toLocaleTimeString([], {
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
@@ -226,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bubbleRow.className = `bubble-row ${isSelf ? 'self-row' : 'peer-row'}`;
     bubbleRow.id = id;
 
-    // 頭像
+    // ── 頭像 ──
     const avatarCol    = document.createElement('div');
     avatarCol.className = 'bubble-avatar';
     const avatarCircle = document.createElement('div');
@@ -238,26 +282,44 @@ document.addEventListener('DOMContentLoaded', () => {
     avatarCol.appendChild(avatarCircle);
     avatarCol.appendChild(avatarLabel);
 
-    // 內容
+    // ── 內容 ──
     const contentCol = document.createElement('div');
     contentCol.className = 'bubble-content';
 
-    // 時間 + 可修改提示
+    // meta：時間 + 模式提示 + 語言旗標
     const metaEl   = document.createElement('div');
     metaEl.className = 'card-meta';
+
     const timeSpan = document.createElement('span');
     timeSpan.className   = 'card-time';
     timeSpan.textContent = timeStr;
     metaEl.appendChild(timeSpan);
+
     if (isSelf) {
-      const editBadge = document.createElement('span');
-      editBadge.className   = 'edit-hint-badge';
-      editBadge.textContent = '✒ 可改 ← 左滑刪';
-      metaEl.appendChild(editBadge);
+      const hint       = document.createElement('span');
+      hint.className   = 'edit-hint-badge';
+      // NOTE: 區分來源：文字輸入 vs 語音辨識，+ 提醒左滑刪除
+      hint.textContent = (isTyped ? '⌨️' : '🎤') + ' 左滑刪';
+      metaEl.appendChild(hint);
     }
 
+    // 語言旗標：自己=原文語言，對方=「→ 目標語言」
+    const langBadge = document.createElement('span');
+    langBadge.className = 'lang-badge';
+    if (isSelf && spokenLang) {
+      const info = getLangInfo(spokenLang);
+      langBadge.textContent = `${info.flag} ${info.code}`;
+      langBadge.title       = `說話語言：${spokenLang}`;
+    } else if (!isSelf) {
+      const info = getLangInfo(getMyLang());
+      langBadge.textContent = `→ ${info.flag} ${info.code}`;
+      langBadge.title       = `已翻譯為：${getMyLang()}`;
+      langBadge.classList.add('translated');
+    }
+    metaEl.appendChild(langBadge);
+
     // 氣泡主體
-    const card = document.createElement('div');
+    const card     = document.createElement('div');
     card.className = `subtitle-card ${isSelf ? 'self-card' : 'peer-card'}`;
 
     const mainText = document.createElement('div');
@@ -265,23 +327,18 @@ document.addEventListener('DOMContentLoaded', () => {
     mainText.textContent = displayText;
     card.appendChild(mainText);
 
-    // NOTE: 對方氣泡不顯示「已翻譯」標籤，節省空間
-
     contentCol.appendChild(metaEl);
 
     if (isSelf) {
-      // 自己的氣泡：包在可左滑刪除的 wrapper 裡
-      const swipeWrapper = document.createElement('div');
+      // 自己的氣泡：包在左滑刪除 wrapper 裡
+      const swipeWrapper  = document.createElement('div');
       swipeWrapper.className = 'card-swipe-wrapper';
-
-      const deleteReveal = document.createElement('div');
+      const deleteReveal  = document.createElement('div');
       deleteReveal.className = 'swipe-delete-reveal';
       deleteReveal.innerHTML = '<span class="del-icon">🗑️</span><span class="del-label">刪除</span>';
-
       swipeWrapper.appendChild(card);
       swipeWrapper.appendChild(deleteReveal);
       contentCol.appendChild(swipeWrapper);
-
       setupBubbleEdit(mainText, { spokenLang });
       setupSwipeDelete(swipeWrapper, card, bubbleRow);
     } else {
@@ -290,27 +347,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bubbleRow.appendChild(avatarCol);
     bubbleRow.appendChild(contentCol);
-
     return bubbleRow;
   }
 
-  // ── 左滑 / 右鍵刪除 ──────────────────────────────────────
+  // ── 左滑 / 右鍵刪除 ─────────────────────────────────────
 
-  /** 收合指定列的刪除按鈕 */
+  /** 收合指定列的刪除紅框 */
   function collapseReveal(row) {
     const c = row && row.querySelector('.subtitle-card');
-    if (c) {
-      c.style.transition = 'transform 0.25s ease';
-      c.style.transform  = 'translateX(0)';
-    }
+    if (c) { c.style.transition = 'transform 0.25s ease'; c.style.transform = 'translateX(0)'; }
     if (activeRevealedRow === row) activeRevealedRow = null;
   }
 
-  /** 以動畫移除氣泡列 */
+  /** 以動畫移除氣泡列（高度收縮 + 淡出）*/
   function removeBubble(row) {
-    const h = row.offsetHeight;
     row.style.overflow     = 'hidden';
-    row.style.maxHeight    = h + 'px';
+    row.style.maxHeight    = row.offsetHeight + 'px';
     row.style.transition   = 'opacity 0.2s ease, max-height 0.3s ease, margin-bottom 0.3s ease';
     requestAnimationFrame(() => {
       row.style.opacity      = '0';
@@ -321,31 +373,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * 為自己的氣泡 wrapper 設置左滑刪除 + 右鍵刪除
-   * @param {HTMLElement} swipeWrapper - .card-swipe-wrapper
-   * @param {HTMLElement} card         - .subtitle-card.self-card
-   * @param {HTMLElement} bubbleRow    - .bubble-row.self-row
+   * 為自己的氣泡設置左滑刪除（觸控）+ 右鍵刪除（桌面）
    */
   function setupSwipeDelete(swipeWrapper, card, bubbleRow) {
-    const REVEAL_W  = 68; // px - 刪除按鈕寬度
-    const THRESHOLD = 52; // px - 觸發展開的滑動距離
-    let startX   = 0;
-    let startY   = 0;
-    let curDX    = 0;
-    let moving   = false;
-    let revealed = false;
-
+    const REVEAL_W = 68, THRESHOLD = 52;
+    let startX = 0, startY = 0, curDX = 0, moving = false, revealed = false;
     const deleteBtn = swipeWrapper.querySelector('.swipe-delete-reveal');
 
     const snapReveal = () => {
       card.style.transition = 'transform 0.25s ease';
       card.style.transform  = `translateX(-${REVEAL_W}px)`;
       revealed = true;
-      // 收合其他已展開的氣泡
       if (activeRevealedRow && activeRevealedRow !== bubbleRow) collapseReveal(activeRevealedRow);
       activeRevealedRow = bubbleRow;
     };
-
     const snapBack = () => {
       card.style.transition = 'transform 0.25s ease';
       card.style.transform  = 'translateX(0)';
@@ -353,53 +394,38 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activeRevealedRow === bubbleRow) activeRevealedRow = null;
     };
 
-    // ── 觸控滑動（行動裝置）──
     swipeWrapper.addEventListener('touchstart', (e) => {
-      startX  = e.touches[0].clientX;
-      startY  = e.touches[0].clientY;
-      curDX   = 0;
-      moving  = false;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      curDX = 0; moving = false;
       if (!revealed) card.style.transition = 'none';
     }, { passive: true });
 
     swipeWrapper.addEventListener('touchmove', (e) => {
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
-      // 若主要方向是垂直，忽略（讓頁面正常捲動）
       if (!moving && Math.abs(dy) > Math.abs(dx) + 8) return;
-      moving = true;
-      curDX  = dx;
-      const base    = revealed ? -REVEAL_W : 0;
-      const clamped = Math.max(-REVEAL_W * 1.25, Math.min(0, base + dx));
-      card.style.transform = `translateX(${clamped}px)`;
+      moving = true; curDX = dx;
+      const base = revealed ? -REVEAL_W : 0;
+      card.style.transform = `translateX(${Math.max(-REVEAL_W * 1.25, Math.min(0, base + dx))}px)`;
     }, { passive: true });
 
     swipeWrapper.addEventListener('touchend', () => {
       if (!moving) return;
-      const base = revealed ? -REVEAL_W : 0;
-      if (base + curDX < -THRESHOLD) snapReveal();
-      else snapBack();
+      (revealed ? curDX - REVEAL_W : curDX) < -THRESHOLD ? snapReveal() : snapBack();
     });
 
-    // ── 點擊刪除按鈕 ──
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (confirm('確定刪除此條字幕？')) {
-        removeBubble(bubbleRow);
-        activeRevealedRow = null;
-      } else {
-        snapBack();
-      }
+      if (confirm('確定刪除此條字幕？')) { removeBubble(bubbleRow); activeRevealedRow = null; }
+      else snapBack();
     });
-
-    // ── 右鍵點擊（桌面）──
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (confirm('確定刪除此條字幕？')) removeBubble(bubbleRow);
     });
   }
 
-  // 觸控 / 點擊氣泡外側 → 收合刪除按鈕
+  // 點擊氣泡外側自動收合刪除紅框
   document.addEventListener('touchstart', (e) => {
     if (activeRevealedRow && !activeRevealedRow.contains(e.target)) collapseReveal(activeRevealedRow);
   }, { passive: true });
@@ -407,29 +433,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeRevealedRow && !activeRevealedRow.contains(e.target)) collapseReveal(activeRevealedRow);
   });
 
+  // ── 氣泡點擊編輯 ─────────────────────────────────────────
   function setupBubbleEdit(mainTextEl, { spokenLang }) {
     mainTextEl.addEventListener('click', () => {
       if (mainTextEl.contentEditable === 'true') return;
       mainTextEl.contentEditable = 'true';
       mainTextEl.focus();
-      const range = document.createRange();
-      const sel   = window.getSelection();
-      range.selectNodeContents(mainTextEl);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      const range = document.createRange(), sel = window.getSelection();
+      range.selectNodeContents(mainTextEl); range.collapse(false);
+      sel.removeAllRanges(); sel.addRange(range);
       mainTextEl.classList.add('editing');
     });
     mainTextEl.addEventListener('blur', () => {
       mainTextEl.contentEditable = 'false';
       mainTextEl.classList.remove('editing');
       const corrected = mainTextEl.textContent.trim();
-      if (!corrected) return;
-      P2PManager.broadcast({
-        text:       corrected,
-        spokenLang: spokenLang || getMyLang(),
-        sender:     getMyName(),
-        timestamp:  Date.now()
+      if (corrected) P2PManager.broadcast({
+        text: corrected, spokenLang: spokenLang || getMyLang(),
+        sender: getMyName(), timestamp: Date.now()
       });
     });
     mainTextEl.addEventListener('keydown', (e) => {
@@ -439,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── 滾動控制 ─────────────────────────────────────────────
   function isScrolledToBottom() {
-    const threshold = Math.max(120, subtitleContainer.clientHeight * 0.15);
-    return (subtitleContainer.scrollHeight - subtitleContainer.scrollTop - subtitleContainer.clientHeight) <= threshold;
+    const t = Math.max(120, subtitleContainer.clientHeight * 0.15);
+    return subtitleContainer.scrollHeight - subtitleContainer.scrollTop - subtitleContainer.clientHeight <= t;
   }
   function checkAndAutoScroll() { if (shouldAutoScroll) scrollToBottom(); }
   function scrollToBottom() {
@@ -450,13 +471,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   subtitleContainer.addEventListener('scroll', () => {
     if (isProgrammaticScroll) return;
-    const atBottom   = isScrolledToBottom();
+    const atBottom = isScrolledToBottom();
     shouldAutoScroll = atBottom;
     scrollBottomBtn.style.display = atBottom ? 'none' : 'block';
   });
   scrollBottomBtn.addEventListener('click', () => {
-    shouldAutoScroll = true;
-    scrollToBottom();
+    shouldAutoScroll = true; scrollToBottom();
     scrollBottomBtn.style.display = 'none';
   });
 
@@ -472,28 +492,49 @@ document.addEventListener('DOMContentLoaded', () => {
     roomIdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(roomIdInput.value); });
     leaveRoomBtn.addEventListener('click', () => { if (confirm('確定離開目前房間？')) leaveRoom(); });
 
-    // 麥克風
-    micToggleBtn.addEventListener('click', async () => {
+    // 麥克風 FAB（點擊切換持續收音）
+    micFab.addEventListener('click', async () => {
       if (!currentRoomId) { openSettingsModal(); return; }
       if (SpeechEngine.isListening()) {
         SpeechEngine.stop();
-        micToggleBtn.classList.remove('active');
-        micToggleBtn.querySelector('.mic-text').textContent = '開啟收音';
+        micFab.classList.remove('active');
+        micFab.textContent = '🎤';
       } else {
-        const success = await SpeechEngine.start(getMyLang());
-        if (success) {
-          micToggleBtn.classList.add('active');
-          micToggleBtn.querySelector('.mic-text').textContent = '收音中…（點擊停止）';
+        const ok = await SpeechEngine.start(getMyLang());
+        if (ok) {
+          micFab.classList.add('active');
+          micFab.textContent = '⏹️'; // 停止符號提示使用者再按可停止
         } else {
           alert('無法啟動麥克風，請確認瀏覽器權限！');
         }
       }
     });
 
-    // 語言切換
+    // 語言切換（可在對話中途更改）
     myLangSelect.addEventListener('change', () => {
       if (SpeechEngine.isListening()) SpeechEngine.setLanguage(getMyLang());
     });
+
+    // 文字輸入 textarea：自動展高
+    textInput.addEventListener('input', () => {
+      textInput.style.height = 'auto';
+      textInput.style.height = Math.min(textInput.scrollHeight, 110) + 'px';
+    });
+    // Enter 送出，Shift+Enter 換行
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+    });
+    sendTextBtn.addEventListener('click', sendText);
+
+    function sendText() {
+      const text = textInput.value.trim();
+      if (!text || !currentRoomId) return;
+      if (welcomeCard) welcomeCard.style.display = 'none';
+      addSelfBubble(text, true); // isTyped = true
+      textInput.value = '';
+      textInput.style.height = 'auto';
+      textInput.focus();
+    }
 
     // 字號調整
     fontIncBtn.addEventListener('click', () => {
@@ -524,8 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeShareModalBtn.addEventListener('click', () => { shareModal.style.display = 'none'; });
     shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.style.display = 'none'; });
     copyUrlBtn.addEventListener('click', () => {
-      shareUrlInput.select();
-      document.execCommand('copy');
+      shareUrlInput.select(); document.execCommand('copy');
       copyUrlBtn.textContent = '✅ 已複製！';
       setTimeout(() => { copyUrlBtn.textContent = '複製連結'; }, 2000);
     });
@@ -534,10 +574,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function openShareModal() {
     if (!currentRoomId) { alert('請先加入房間！'); return; }
     modalRoomIdDisplay.textContent = currentRoomId;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
-    shareUrlInput.value = shareUrl;
+    const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
+    shareUrlInput.value = url;
     qrcodeContainer.innerHTML = '';
-    new QRCode(qrcodeContainer, { text: shareUrl, width: 160, height: 160 });
+    new QRCode(qrcodeContainer, { text: url, width: 160, height: 160 });
     shareModal.style.display = 'flex';
   }
 });

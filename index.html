@@ -47,18 +47,25 @@
     <!-- 浮動置底按鈕 -->
     <button id="scroll-bottom-btn" class="scroll-bottom-btn" style="display: none;">↓ 底部</button>
 
-    <!-- 底部控制列 -->
+    <!-- 底部：工具列 + 聊天輸入列 -->
     <footer class="app-footer">
-      <div class="footer-controls">
-        <button id="mic-toggle-btn" class="mic-btn disabled" disabled>
-          <span class="mic-icon">🎤</span>
-          <span class="mic-text">開啟收音</span>
-        </button>
-        <div class="font-controls">
-          <button id="font-dec-btn" class="tool-btn" title="縮小字號">A-</button>
-          <button id="font-inc-btn" class="tool-btn" title="放大字號">A+</button>
-          <button id="clear-subtitles-btn" class="tool-btn danger-tool" title="清空字幕">🗑️</button>
-        </div>
+      <div class="footer-tool-bar">
+        <button id="font-dec-btn" class="tool-btn" title="縮小字號">A-</button>
+        <button id="font-inc-btn" class="tool-btn" title="放大字號">A+</button>
+        <button id="clear-subtitles-btn" class="tool-btn danger-tool" title="清空字幕">🗑️</button>
+      </div>
+      <div class="footer-input-bar">
+        <textarea
+          id="text-input"
+          class="text-input"
+          placeholder="輸入文字訊息（Enter 送出，Shift+Enter 換行）"
+          rows="1"
+          maxlength="500"
+          disabled
+        ></textarea>
+        <button id="send-text-btn" class="send-btn" disabled title="送出文字">送出</button>
+        <!-- 麥克風：右下角圓形持續收音 FAB -->
+        <button id="mic-fab" class="mic-fab disabled" disabled title="點擊開始／停止持續收音">🎤</button>
       </div>
     </footer>
   </div>
