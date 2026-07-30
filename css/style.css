@@ -546,8 +546,20 @@ body.light-theme .lang-bar select option {
   z-index: 1;
   cursor: pointer;
   user-select: none;
-  /* NOTE: 觸控區域要夠大，Apple HIG 建議 ≥ 44px */
+  
+  /* 預設完全透明，且不可點擊，防止紅色透出半透明氣泡 */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
+
+/* 僅在拖動中（swiping）或已展開（revealed）時顯示紅色背景 */
+.card-swipe-wrapper.swiping .swipe-delete-reveal,
+.card-swipe-wrapper.revealed .swipe-delete-reveal {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .swipe-delete-reveal:active {
   background: linear-gradient(160deg, #DC2626, #991B1B);
 }

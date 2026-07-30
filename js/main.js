@@ -430,6 +430,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function collapseReveal(row) {
     const c = row && row.querySelector('.subtitle-card');
     if (c) { c.style.transition = 'transform 0.25s ease'; c.style.transform = 'translateX(0)'; }
+    const w = row && row.querySelector('.card-swipe-wrapper');
+    if (w) w.classList.remove('revealed');
     if (activeRevealedRow === row) activeRevealedRow = null;
   }
 
@@ -458,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.style.transition = 'transform 0.25s ease';
       card.style.transform  = `translateX(-${REVEAL_W}px)`;
       revealed = true;
+      swipeWrapper.classList.add('revealed');
       if (activeRevealedRow && activeRevealedRow !== bubbleRow) collapseReveal(activeRevealedRow);
       activeRevealedRow = bubbleRow;
     };
@@ -465,6 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.style.transition = 'transform 0.25s ease';
       card.style.transform  = 'translateX(0)';
       revealed = false;
+      swipeWrapper.classList.remove('revealed');
       if (activeRevealedRow === bubbleRow) activeRevealedRow = null;
     };
 
@@ -472,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
       curDX = 0; moving = false;
       if (!revealed) card.style.transition = 'none';
+      swipeWrapper.classList.add('swiping');
     }, { passive: true });
 
     swipeWrapper.addEventListener('touchmove', (e) => {
@@ -484,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
 
     swipeWrapper.addEventListener('touchend', () => {
+      swipeWrapper.classList.remove('swiping');
       if (!moving) return;
       (revealed ? curDX - REVEAL_W : curDX) < -THRESHOLD ? snapReveal() : snapBack();
     });
