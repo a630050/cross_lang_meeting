@@ -124,6 +124,34 @@ html, body {
   gap: 10px;
 }
 
+/* 暱稱輸入列 */
+.name-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.name-bar-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.name-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  outline: none;
+}
+.name-bar input::placeholder {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
 .room-bar {
   display: flex;
   gap: 8px;
@@ -140,6 +168,65 @@ html, body {
 }
 .room-bar input:focus { border-color: var(--accent-color); }
 
+/* 已加入房間狀態列 */
+.room-joined-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  animation: fadeSlideIn 0.25s ease-out;
+}
+.room-joined-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+/* 綠色已連線指示燈 */
+.joined-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success-color);
+  box-shadow: 0 0 6px var(--success-color);
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.room-joined-info strong {
+  color: #34D399;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+/* 離開房間按鈕 */
+.leave-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.leave-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fff;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .primary-btn {
   background: var(--accent-color);
   color: white;
@@ -152,6 +239,7 @@ html, body {
   transition: background 0.2s ease;
 }
 .primary-btn:hover { background: var(--accent-hover); }
+
 
 .lang-selector-bar {
   display: grid;
@@ -176,6 +264,16 @@ html, body {
   color: var(--text-primary);
   font-size: 0.85rem;
   outline: none;
+}
+/* NOTE: 修正核心問題——暗色模式下瀏覽器原生下拉選單是白色背景，
+   必須對 option 設定發展金承色讓文字可見 */
+.lang-group select option {
+  background-color: #1a1d26;
+  color: #F3F4F6;
+}
+body.light-theme .lang-group select option {
+  background-color: #ffffff;
+  color: #0F172A;
 }
 
 /* 字幕主区域 */

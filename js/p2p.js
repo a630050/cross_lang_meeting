@@ -95,7 +95,7 @@ const P2PManager = (function() {
   }
 
   /**
-   * 广播发送字幕消息给房间内所有连接的节点
+   * 廣播發送字幕訊息給房間內所有連線節點
    */
   function broadcast(payload) {
     const activePeers = Object.values(connections);
@@ -104,14 +104,14 @@ const P2PManager = (function() {
         try {
           conn.send(payload);
         } catch (e) {
-          console.error('[P2P] 发送失败:', e);
+          console.error('[P2P] 發送失敗:', e);
         }
       }
     });
   }
 
   /**
-   * 主动连接指定 Peer
+   * 主動連線至指定 Peer
    */
   function connectToPeer(targetPeerId) {
     if (!peer || targetPeerId === myPeerId) return;
@@ -119,12 +119,35 @@ const P2PManager = (function() {
     setupConnection(conn);
   }
 
+  /**
+   * 離開房間：銷毀 Peer 實例並清空所有連線
+   * NOTE: 呼叫後需由上層 UI 重置狀態
+   */
+  function leaveRoom() {
+    // 關閉所有現有連線
+    Object.values(connections).forEach(conn => {
+      try { conn.close(); } catch (e) {}
+    });
+    connections = {};
+
+    if (peer) {
+      try { peer.destroy(); } catch (e) {}
+      peer = null;
+    }
+
+    myPeerId = null;
+    roomId   = null;
+
+    if (onStatusCallback) onStatusCallback('disconnected', '未加入房間');
+  }
+
   return {
     joinRoom,
+    leaveRoom,
     broadcast,
     connectToPeer,
-    getMyPeerId: () => myPeerId,
-    getRoomId: () => roomId,
+    getMyPeerId:       () => myPeerId,
+    getRoomId:         () => roomId,
     getConnectedCount: () => Object.keys(connections).length
   };
 })();
