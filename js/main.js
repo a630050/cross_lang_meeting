@@ -365,8 +365,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isSelf) {
       const hint       = document.createElement('span');
       hint.className   = 'edit-hint-badge';
-      // NOTE: 區分來源：文字輸入 vs 語音辨識，+ 提醒左滑刪除
-      hint.textContent = isTyped ? '⌨️' : '🎤';
+      // 提示文字（點擊直觀刪除）
+      hint.textContent = (isTyped ? '⌨️' : '🎤') + ' 🗑️ 刪除';
+      hint.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('確定刪除此條字幕？')) {
+          removeBubble(bubbleRow);
+          if (activeRevealedRow === bubbleRow) activeRevealedRow = null;
+        }
+      });
       metaEl.appendChild(hint);
     }
 

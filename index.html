@@ -27,8 +27,8 @@
       <div class="header-actions">
         <button id="theme-toggle-btn" class="icon-btn" title="切換主題">🌙</button>
         <!-- 設定按鈕：點擊開啟設定 Modal -->
-        <button id="settings-btn" class="icon-btn highlight-btn" title="開啟設定">⚙️ 設定</button>
-        <button id="share-room-btn" class="icon-btn" title="分享房間 QR 碼" style="display:none">🔗 分享</button>
+        <button id="settings-btn" class="icon-btn highlight-btn" title="開啟設定">⚙️</button>
+        <button id="share-room-btn" class="icon-btn" title="分享房間 QR 碼" style="display:none">🔗</button>
       </div>
     </header>
 
@@ -36,7 +36,7 @@
     <main class="subtitle-container" id="subtitle-container">
       <div class="welcome-card" id="welcome-card">
         <h2>👋 歡迎使用跨語言即時字幕機</h2>
-        <p>點擊右上角 <strong>⚙️ 設定</strong> 輸入暱稱與房間碼，即可開始對講！</p>
+        <p>點擊右上角 <strong>⚙️</strong> 輸入暱稱與房間碼，即可開始對講！</p>
       </div>
       <div class="subtitles-list" id="subtitles-list"></div>
       <div class="interim-card" id="interim-card" style="display: none;">
@@ -59,7 +59,7 @@
         <textarea
           id="text-input"
           class="text-input"
-          placeholder="輸入文字訊息（Enter 送出，Shift+Enter 換行）"
+          placeholder="輸入訊息..."
           rows="1"
           maxlength="500"
           disabled
@@ -129,9 +129,8 @@
         ✅ 開始使用
       </button>
 
-      <!-- 刪除方式提醒（加入後才顯示）-->
       <div id="delete-hint-area" class="settings-delete-hint" style="display:none">
-        💡 自己的氣泡可左滑或右鍵刪除
+        💡 自己的氣泡可左滑或點擊 🗑️ 刪除
       </div>
     </div>
   </div>
