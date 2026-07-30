@@ -138,11 +138,22 @@ const P2PManager = (function () {
   // ── 連線事件處理 ──────────────────────────────────────────
 
   function setupConnection(conn) {
-    conn.on('open', () => {
-      console.log('[P2P] 資料通道建立成功:', conn.peer);
+    // NOTE: PeerJS 關鍵 bug 修正
+    // 錨定節點收到 incoming connection 時，conn 可能已是 open 狀態，
+    // 若在此後才 attach conn.on('open')，事件不會再觸發。
+    // 解法：先檢查 conn.open，已開啟就直接處理，否則才等事件。
+    const handleOpen = () => {
+      console.log('[P2P] ✅ 資料通道建立成功:', conn.peer);
       connections[conn.peer] = conn;
       if (onStatusCallback) onStatusCallback('connected', '✅ 已與對方成功連線！');
-    });
+    };
+
+    if (conn.open) {
+      // Incoming connection 已在 open 狀態，立即處理
+      handleOpen();
+    } else {
+      conn.on('open', handleOpen);
+    }
 
     conn.on('data', (data) => {
       console.log('[P2P] 收到資料:', data);
