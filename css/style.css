@@ -15,9 +15,9 @@
   --success-color: #10B981;
   --warning-color: #F59E0B;
   --danger-color: #EF4444;
-  --subtitle-font-size: 20px;
+  --subtitle-font-size: 16px;
   --subtitle-line-height: 1.4;
-  --subtitle-translated-size: 20px;
+  --subtitle-translated-size: 16px;
 }
 
 body.light-theme {
@@ -459,17 +459,17 @@ body.light-theme .lang-bar select option {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* 自己气泡 —— 右侧蓝色 */
+/* 自己气泡 —— 右侧蓝色 (纯色半透明) */
 .subtitle-card.self-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.2));
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-bottom-right-radius: 4px; /* 气泡尖角 */
 }
 
-/* 对方气泡 —— 左侧绿色 */
+/* 对方气泡 —— 左侧绿色 (纯色半透明) */
 .subtitle-card.peer-card {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 182, 212, 0.15));
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.13);
+  border: 1px solid rgba(16, 185, 129, 0.28);
   border-bottom-left-radius: 4px; /* 气泡尖角 */
 }
 
@@ -928,8 +928,8 @@ body.light-theme .settings-field select option {
 /* ── ≤ 600px（手機直式）── */
 @media (max-width: 600px) {
   :root {
-    --subtitle-font-size: 20px;
-    --subtitle-translated-size: 16px;
+    --subtitle-font-size: 15px;
+    --subtitle-translated-size: 13px;
   }
 
   .app-container   { max-width: 100%; box-shadow: none; }
@@ -968,8 +968,8 @@ body.light-theme .settings-field select option {
 /* ── ≤ 380px（超小螢幕）── */
 @media (max-width: 380px) {
   :root {
-    --subtitle-font-size: 18px;
-    --subtitle-translated-size: 14px;
+    --subtitle-font-size: 14px;
+    --subtitle-translated-size: 12px;
   }
 
   .logo-title    { font-size: 0.82rem; }
